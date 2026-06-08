@@ -21,7 +21,8 @@ double g_emaFrametimeMs = 0;   // present-to-present, EMA
 double g_maxFrametimeMs = 0;   // window peak (rough p99 stand-in)
 double g_presentRate    = 0;   // presents/s (last window)
 double g_gpuBusyPct      = -1;
-double g_cpuMainPct      = -1;
+double g_cpuMainPct      = -1;   // busiest single core
+double g_cpuTotalPct     = -1;
 
 double TicksToMs(LONGLONG t) { return (double)t * 1000.0 / g_freq.QuadPart; }
 
@@ -39,11 +40,12 @@ void Stop() {}
 
 void SetPpf(int ppf) { g_ppf = ppf < 1 ? 1 : ppf; }
 
-void MergeOsMetrics(double gpuBusyPct, double cpuMainPct)
+void MergeOsMetrics(double gpuBusyPct, double cpuPeakCorePct, double cpuTotalPct)
 {
     EnterCriticalSection(&g_cs);
-    g_gpuBusyPct = gpuBusyPct;
-    g_cpuMainPct = cpuMainPct;
+    if (gpuBusyPct     >= 0) g_gpuBusyPct  = gpuBusyPct;
+    if (cpuPeakCorePct >= 0) g_cpuMainPct  = cpuPeakCorePct;
+    if (cpuTotalPct    >= 0) g_cpuTotalPct = cpuTotalPct;
     LeaveCriticalSection(&g_cs);
 }
 
@@ -80,6 +82,7 @@ FrameSignals Snapshot()
     s.frametimeP99 = g_maxFrametimeMs;
     s.gpuBusyPct   = g_gpuBusyPct;
     s.cpuMainPct   = g_cpuMainPct;
+    s.cpuTotalPct  = g_cpuTotalPct;
     LeaveCriticalSection(&g_cs);
     return s;
 }

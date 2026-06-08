@@ -11,7 +11,8 @@ struct FrameSignals {
     double   frametimeMs   = 0;   // mean
     double   frametimeP99  = 0;   // stutter tail
     double   gpuBusyPct    = -1;  // from OS PDH or timestamp queries; -1 = unknown
-    double   cpuMainPct    = -1;  // render-thread occupancy; -1 = unknown
+    double   cpuMainPct    = -1;  // busiest single core % (single-thread signature); -1 = unknown
+    double   cpuTotalPct   = -1;  // total CPU %; -1 = unknown
     bool     vsyncOn       = false;
     uint32_t swapEffect    = 0;   // DXGI_SWAP_EFFECT
     uint32_t swapFlags     = 0;
@@ -25,7 +26,7 @@ namespace profiler {
     void Stop();
     void OnPresent();             // call once per present (from the hook orchestrator)
     void SetPpf(int ppf);         // presents per displayed frame (from game profile)
-    void MergeOsMetrics(double gpuBusyPct, double cpuMainPct);  // from companion over IPC
+    void MergeOsMetrics(double gpuBusyPct, double cpuPeakCorePct, double cpuTotalPct);  // from companion over IPC
     FrameSignals Snapshot();
 }
 

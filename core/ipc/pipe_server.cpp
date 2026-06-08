@@ -2,6 +2,7 @@
 // reads inbound JSON lines to merge OS metrics (GPU%/CPU%) and (TODO) commands.
 #include "flcd/ipc.h"
 #include "flcd/profiler.h"
+#include "flcd/headroom.h"
 #include "flcd/log.h"
 #include <windows.h>
 #include <stdio.h>
@@ -27,11 +28,25 @@ bool FindNum(const char* json, const char* key, double* out)
 
 void HandleInbound(const char* line)
 {
-    double gpu = -1, cpu = -1;
-    bool hasG = FindNum(line, "gpu", &gpu);
-    bool hasC = FindNum(line, "cpu", &cpu);
-    if (hasG || hasC) profiler::MergeOsMetrics(hasG ? gpu : -1, hasC ? cpu : -1);
+    double gpu = -1, cpuPeak = -1, cpuTotal = -1;
+    bool any = false;
+    any |= FindNum(line, "gpu",      &gpu);
+    any |= FindNum(line, "cpuPeak",  &cpuPeak);
+    any |= FindNum(line, "cpuTotal", &cpuTotal);
+    if (any) profiler::MergeOsMetrics(gpu, cpuPeak, cpuTotal);
     // TODO P2: parse {"cmd":"limiter","fps":..,"ppf":..} and drive the limiter.
+}
+
+const char* BottleneckStr(Bottleneck b)
+{
+    switch (b) {
+        case Bottleneck::Gpu:             return "gpu";
+        case Bottleneck::CpuSingleThread: return "cpu-single";
+        case Bottleneck::CpuMultiThread:  return "cpu-multi";
+        case Bottleneck::FrameCap:        return "cap";
+        case Bottleneck::Balanced:        return "balanced";
+        default:                          return "unknown";
+    }
 }
 
 DWORD WINAPI ServerThread(LPVOID)
@@ -61,13 +76,19 @@ DWORD WINAPI ServerThread(LPVOID)
             DWORD n = 0;
             if (ReadFile(pipe, rx, sizeof(rx) - 1, &n, nullptr) && n) { rx[n] = 0; HandleInbound(rx); }
 
-            // outbound: stream a snapshot
+            // outbound: stream a snapshot + headroom verdict
             FrameSignals s = profiler::Snapshot();
-            char tx[512];
+            HeadroomReport h = headroom::Assess(s);
+            char tx[1024];
             int len = _snprintf_s(tx, sizeof(tx), _TRUNCATE,
                 "{\"type\":\"signals\",\"displayFps\":%.1f,\"presentRate\":%.1f,\"ppf\":%d,"
-                "\"frametimeMs\":%.2f,\"frametimeP99\":%.2f,\"gpuBusyPct\":%.1f,\"cpuMainPct\":%.1f}\n",
-                s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99, s.gpuBusyPct, s.cpuMainPct);
+                "\"frametimeMs\":%.2f,\"frametimeP99\":%.2f,\"gpuBusyPct\":%.1f,\"cpuMainPct\":%.1f,\"cpuTotalPct\":%.1f,"
+                "\"bottleneck\":\"%s\",\"utilizationIndex\":%.0f,\"headroomIndex\":%.0f,\"moreFpsLikely\":%s,"
+                "\"verdict\":\"%s\",\"suggestion\":\"%s\"}\n",
+                s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99,
+                s.gpuBusyPct, s.cpuMainPct, s.cpuTotalPct,
+                BottleneckStr(h.bottleneck), h.utilizationIndex, h.headroomIndex,
+                h.moreFpsLikely ? "true" : "false", h.verdict.c_str(), h.suggestion.c_str());
             DWORD w = 0;
             if (len <= 0 || !WriteFile(pipe, tx, (DWORD)len, &w, nullptr)) {
                 if (GetLastError() == ERROR_NO_DATA || GetLastError() == ERROR_BROKEN_PIPE) break;

@@ -6,7 +6,8 @@ add_library(flcd_core SHARED
     profiler/frame_profiler.cpp
     remedies/frame_limiter.cpp
     ipc/pipe_server.cpp
-    # classify/classifier.cpp     # P1
+    classify/headroom.cpp
+    # classify/classifier.cpp     # P1 (deferred; headroom covers the index)
     # remedies/dxvk_advisor.cpp   # P3
     # overlay/imgui_overlay.cpp   # P1
 )

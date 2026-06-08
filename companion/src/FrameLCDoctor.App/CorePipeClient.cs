@@ -14,6 +14,21 @@ public sealed class CorePipeClient
 
     public event Action<FrameSignals>? OnSignals;
 
+    private volatile NamedPipeClientStream? _pipe;
+
+    /// <summary>Send a JSON line to the core (e.g. OS metrics). No-op if disconnected.</summary>
+    public async Task SendAsync(string json, CancellationToken ct)
+    {
+        var pipe = _pipe;
+        if (pipe is null || !pipe.IsConnected) return;
+        try
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(json.EndsWith('\n') ? json : json + "\n");
+            await pipe.WriteAsync(bytes, ct);
+        }
+        catch { /* disconnected mid-write */ }
+    }
+
     public async Task RunAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -24,6 +39,7 @@ public sealed class CorePipeClient
                     PipeOptions.Asynchronous);
                 Console.WriteLine("connecting to core...");
                 await pipe.ConnectAsync(2000, ct);
+                _pipe = pipe;
                 Console.WriteLine("connected.");
 
                 var buf = new byte[4096];
@@ -46,6 +62,7 @@ public sealed class CorePipeClient
             catch (TimeoutException) { /* core not up yet */ }
             catch (OperationCanceledException) { break; }
             catch (Exception ex) { Console.WriteLine($"pipe error: {ex.Message}"); }
+            finally { _pipe = null; }
 
             await Task.Delay(1000, ct);
         }
@@ -78,4 +95,13 @@ public sealed class FrameSignals
     public double FrametimeP99 { get; set; }
     public double GpuBusyPct { get; set; }
     public double CpuMainPct { get; set; }
+    public double CpuTotalPct { get; set; }
+
+    // Headroom Index (computed in the core).
+    public string Bottleneck { get; set; } = "unknown";
+    public double UtilizationIndex { get; set; }
+    public double HeadroomIndex { get; set; }
+    public bool MoreFpsLikely { get; set; }
+    public string Verdict { get; set; } = "";
+    public string Suggestion { get; set; } = "";
 }
