@@ -42,32 +42,45 @@ public static class GpuInfo
     }
 }
 
-/// <summary>Vendor + bottleneck aware DXVK recommendation (the "smart advisor").</summary>
+public enum DxvkRec { Unknown, Recommended, Unlikely, NotApplicable }
+
+/// <summary>A plain-language DXVK recommendation: a verdict anyone can read + the why.</summary>
+public record DxvkAdvice(DxvkRec Level, string Verdict, string Reason);
+
+/// <summary>Vendor + bottleneck aware DXVK advisor, phrased for non-technical users.</summary>
 public static class DxvkAdvisor
 {
-    public static string Advise(string bottleneck, GpuVendor vendor)
+    public static DxvkAdvice Advise(string bottleneck, GpuVendor vendor)
     {
         bool cpuBound = bottleneck is "cpu-single" or "cpu-multi";
         if (cpuBound)
         {
             return vendor switch
             {
-                GpuVendor.Amd =>
-                    "Cuello CPU + GPU AMD: DXVK suele dar ganancia GRANDE (baja el overhead del driver DX11). Recomendado probar.",
-                GpuVendor.Nvidia =>
-                    "Cuello CPU + GPU NVIDIA: el driver NV ya es multihilo, DXVK rara vez ayuda (a veces peor). Si el core saturado es game-logic (UE4), no aplica. Mejor: bajar settings de CPU (distancia/densidad/sombras dinamicas).",
-                GpuVendor.Intel =>
-                    "Cuello CPU + GPU Intel: DXVK puede ayudar si es overhead de driver. Proba y medi con esta herramienta.",
-                _ =>
-                    "Cuello CPU: DXVK ayuda si el costo es del driver DX11 (sobre todo AMD). Proba y medi.",
+                GpuVendor.Amd => new(DxvkRec.Recommended,
+                    "Si - probablemente te de bastantes mas FPS",
+                    "Tu juego esta frenado por el procesador (CPU) y tenes una placa AMD. En las AMD, DirectX hace trabajar de mas a la CPU; DXVK lo evita y suele subir los fps. Vale la pena probar."),
+                GpuVendor.Nvidia => new(DxvkRec.Unlikely,
+                    "Probablemente no cambie nada",
+                    "Estas frenado por el procesador, pero con NVIDIA el DirectX ya viene bien resuelto. Aca el limite suele ser la logica del juego, que DXVK no toca. Para mas fps conviene bajar opciones que cargan la CPU (distancia de dibujado, densidad de objetos, sombras)."),
+                GpuVendor.Intel => new(DxvkRec.Unknown,
+                    "Quizas - proba y compara aca",
+                    "Estas frenado por el procesador. Con placas Intel DXVK puede ayudar o no. Instalalo, jugá un rato y compará los fps en este panel."),
+                _ => new(DxvkRec.Unknown,
+                    "Quizas - proba y compara aca",
+                    "Estas frenado por el procesador. DXVK ayuda sobre todo en placas AMD. Probalo y medí los fps aca."),
             };
         }
         if (bottleneck == "gpu")
-            return "GPU-bound: DXVK no sube fps (el cuello es la GPU). Para mas fps, baja settings graficos / resolucion.";
+            return new(DxvkRec.NotApplicable, "No - el limite es la placa de video",
+                "Tu placa de video esta al maximo. DXVK no crea fps cuando el cuello es la GPU. Para mas fps, baja la calidad grafica o la resolucion.");
         if (bottleneck == "cap")
-            return "Limitado por un cap: saca/sube el cap. DXVK no aplica aca.";
+            return new(DxvkRec.NotApplicable, "No - tenes un tope de fps puesto",
+                "Tus fps estan limitados por un tope (vsync o un limite), no por el hardware. Saca el tope para mas fps; DXVK no cambia esto.");
         if (bottleneck == "balanced")
-            return "Balanceado: poco margen. DXVK improbable que ayude.";
-        return "Conecta el juego para una recomendacion.";
+            return new(DxvkRec.NotApplicable, "Casi no hay nada para ganar",
+                "La placa y el procesador estan bien aprovechados. DXVK dificilmente cambie algo.");
+        return new(DxvkRec.Unknown, "Conecta un juego",
+            "Abri un juego con FrameLCDoctor instalado para ver si DXVK te conviene.");
     }
 }

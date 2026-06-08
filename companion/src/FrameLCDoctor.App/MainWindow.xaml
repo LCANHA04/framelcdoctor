@@ -1,33 +1,52 @@
 <Window x:Class="FrameLCDoctor.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FrameLCDoctor" Height="780" Width="560"
+        Title="FrameLCDoctor" Height="820" Width="580"
         Background="{StaticResource Bg}" Foreground="{StaticResource Text}"
-        FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
         <Style TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Text}"/></Style>
+        <Style x:Key="Display" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI Variable Display, Segoe UI"/>
+        </Style>
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource Panel}"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="14"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="16"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
         <Style x:Key="H" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource Muted}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,0,8"/>
         </Style>
-        <Style TargetType="ProgressBar">
-            <Setter Property="Height" Value="10"/>
-            <Setter Property="Background" Value="#15151A"/>
+        <Style x:Key="Sub" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,1,0,12"/>
+        </Style>
+        <Style x:Key="Bar" TargetType="ProgressBar">
+            <Setter Property="Height" Value="12"/>
             <Setter Property="Foreground" Value="{StaticResource Accent}"/>
-            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid>
+                            <Border Background="#15151A" CornerRadius="6"/>
+                            <Border x:Name="PART_Track"/>
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}" CornerRadius="6"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
-    <Grid Margin="16">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -37,53 +56,69 @@
         </Grid.RowDefinitions>
 
         <!-- header -->
-        <DockPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock Text="FrameLCDoctor" FontSize="22" FontWeight="Bold"/>
-            <Button x:Name="BtnGames" Content="Juegos..." DockPanel.Dock="Right" Padding="12,4"
-                    VerticalAlignment="Center" Click="BtnGames_Click"/>
-            <TextBlock x:Name="TxtStatus" Text="buscando juego..." Foreground="{StaticResource Muted}"
-                       VerticalAlignment="Bottom" Margin="12,0,12,3" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
-        </DockPanel>
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <StackPanel HorizontalAlignment="Left">
+                <TextBlock Style="{StaticResource Display}" Text="FrameLCDoctor" FontSize="24" FontWeight="SemiBold"/>
+                <TextBlock Text="Panel de rendimiento" Foreground="{StaticResource Muted}" FontSize="12"/>
+            </StackPanel>
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                <Border Background="#15151A" CornerRadius="12" Padding="10,5" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="#777" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TxtStatus" Text="buscando juego..." Margin="7,0,0,0"
+                                   Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+                <Button x:Name="BtnGames" Content="Juegos..." Padding="14,6" Click="BtnGames_Click"/>
+            </StackPanel>
+        </Grid>
 
         <!-- live performance -->
         <Border Grid.Row="1" Style="{StaticResource Card}">
             <StackPanel>
                 <TextBlock Style="{StaticResource H}" Text="RENDIMIENTO EN VIVO"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                    <TextBlock x:Name="TxtFps" Text="--" FontSize="40" FontWeight="Bold"/>
-                    <TextBlock Text="fps" FontSize="16" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="6,0,18,8"/>
-                    <TextBlock x:Name="TxtFrametime" Text="" FontSize="14" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="0,0,0,10"/>
+                <TextBlock Style="{StaticResource Sub}" Text="fps y uso real de tu hardware mientras jugas"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <TextBlock x:Name="TxtFps" Style="{StaticResource Display}" Text="--" FontSize="46" FontWeight="Bold"/>
+                    <TextBlock Text="fps" FontSize="16" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="6,0,22,10"/>
+                    <TextBlock x:Name="TxtFrametime" Text="" FontSize="13" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="0,0,0,12"/>
                 </StackPanel>
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="78"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="GPU" VerticalAlignment="Center"/>
-                    <ProgressBar x:Name="BarGpu" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"/>
-                    <TextBlock x:Name="TxtGpu" Grid.Row="0" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center"/>
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="CPU pico" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                    <ProgressBar x:Name="BarCpuPeak" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                    <TextBlock x:Name="TxtCpuPeak" Grid.Row="1" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="CPU total" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                    <ProgressBar x:Name="BarCpuTotal" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="0,8,0,0"/>
-                    <TextBlock x:Name="TxtCpuTotal" Grid.Row="2" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" Margin="0,8,0,0"/>
+                    <ProgressBar x:Name="BarGpu" Style="{StaticResource Bar}" Grid.Row="0" Grid.Column="1" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtGpu" Grid.Row="0" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="CPU pico" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                    <ProgressBar x:Name="BarCpuPeak" Style="{StaticResource Bar}" Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                    <TextBlock x:Name="TxtCpuPeak" Grid.Row="1" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,10,0,0"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="CPU total" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                    <ProgressBar x:Name="BarCpuTotal" Style="{StaticResource Bar}" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="0,10,0,0"/>
+                    <TextBlock x:Name="TxtCpuTotal" Grid.Row="2" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,10,0,0"/>
                 </Grid>
             </StackPanel>
         </Border>
 
-        <!-- headroom index -->
+        <!-- headroom -->
         <Border Grid.Row="2" Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Style="{StaticResource H}" Text="INDICE DE APROVECHAMIENTO"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                    <Border x:Name="Badge" CornerRadius="5" Padding="8,3" Background="#555">
-                        <TextBlock x:Name="TxtBottleneck" Text="--" FontWeight="SemiBold"/>
-                    </Border>
-                    <TextBlock Text="margen libre:" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="16,0,6,0"/>
-                    <TextBlock x:Name="TxtHeadroom" Text="--" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"/>
-                    <TextBlock Text="%" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="2,2,0,0"/>
-                    <TextBlock x:Name="TxtMoreFps" Text="" VerticalAlignment="Center" Margin="18,0,0,0" FontWeight="SemiBold"/>
-                </StackPanel>
-                <TextBlock x:Name="TxtVerdict" Text="Conecta el juego para diagnosticar." TextWrapping="Wrap" Margin="0,2,0,4"/>
+                <TextBlock Style="{StaticResource H}" Text="APROVECHAMIENTO"/>
+                <TextBlock Style="{StaticResource Sub}" Text="que esta limitando tu fps y cuanto margen libre hay"/>
+                <Grid Margin="0,0,0,10">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border x:Name="Badge" CornerRadius="6" Padding="10,5" Background="#555">
+                            <TextBlock x:Name="TxtBottleneck" Text="--" FontWeight="SemiBold"/>
+                        </Border>
+                        <Border x:Name="MoreFpsPill" CornerRadius="6" Padding="9,5" Background="#23402B" Margin="10,0,0,0" Visibility="Collapsed">
+                            <TextBlock x:Name="TxtMoreFps" Text="+ fps posible" Foreground="#5CD67A" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtHeadroom" Style="{StaticResource Display}" Text="--" FontSize="28" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <TextBlock Text="% margen" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="4,0,0,5"/>
+                    </StackPanel>
+                </Grid>
+                <TextBlock x:Name="TxtVerdict" Text="Conecta un juego para diagnosticar." TextWrapping="Wrap" FontSize="14" Margin="0,2,0,6"/>
                 <TextBlock x:Name="TxtSuggestion" Text="" TextWrapping="Wrap" Foreground="{StaticResource Muted}"/>
             </StackPanel>
         </Border>
@@ -92,19 +127,18 @@
         <Border Grid.Row="3" Style="{StaticResource Card}">
             <StackPanel>
                 <TextBlock Style="{StaticResource H}" Text="REMEDIOS"/>
+                <TextBlock Style="{StaticResource Sub}" Text="limita el fps (solo baja; 60 = velocidad correcta en motores de paso fijo)"/>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Limite FPS" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="0" Text="Limite FPS" VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <Slider x:Name="SliderFps" Grid.Column="1" Minimum="0" Maximum="240" Value="60"
-                            TickFrequency="30" IsSnapToTickEnabled="False" VerticalAlignment="Center"
-                            ValueChanged="SliderFps_ValueChanged"/>
-                    <TextBlock x:Name="TxtFpsVal" Grid.Column="2" Text="60" Width="64" TextAlignment="Right" VerticalAlignment="Center"/>
+                            TickFrequency="30" VerticalAlignment="Center" ValueChanged="SliderFps_ValueChanged"/>
+                    <TextBlock x:Name="TxtFpsVal" Grid.Column="2" Text="60" Width="72" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 </Grid>
-                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                    <TextBlock Text="presents/frame" VerticalAlignment="Center" Foreground="{StaticResource Muted}"/>
-                    <TextBox x:Name="TxtPpf" Text="2" Width="40" Margin="8,0,0,0" Background="#15151A" Foreground="{StaticResource Text}" BorderBrush="#444"/>
-                    <Button x:Name="BtnApply" Content="Aplicar" Padding="16,5" Margin="18,0,0,0" Click="BtnApply_Click"/>
-                    <TextBlock Text="(0 = sin limite)" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button x:Name="BtnApply" Content="Aplicar" Padding="18,6" Click="BtnApply_Click"/>
+                    <TextBlock Text="0 = sin limite" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="14,0,0,0"/>
+                    <TextBox x:Name="TxtPpf" Visibility="Collapsed" Text="0"/>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -112,16 +146,26 @@
         <!-- dxvk advisor -->
         <Border Grid.Row="4" Style="{StaticResource Card}">
             <StackPanel>
-                <DockPanel Margin="0,0,0,8">
-                    <TextBlock Style="{StaticResource H}" Text="DXVK ADVISOR" DockPanel.Dock="Left"/>
-                    <TextBlock x:Name="TxtGpu2" Text="" Foreground="{StaticResource Muted}" FontSize="12"
-                               HorizontalAlignment="Right"/>
+                <DockPanel Margin="0,0,0,2">
+                    <TextBlock Style="{StaticResource H}" Text="¿DXVK TE DARIA MAS FPS?" DockPanel.Dock="Left"/>
+                    <TextBlock x:Name="TxtGpu2" Text="" Foreground="{StaticResource Muted}" FontSize="11" HorizontalAlignment="Right"/>
                 </DockPanel>
-                <TextBlock x:Name="TxtDxvk" Text="Conecta el juego para una recomendacion."
-                           TextWrapping="Wrap" Foreground="{StaticResource Text}"/>
-                <Button x:Name="BtnDxvk" Content="Descargar DXVK (github)" HorizontalAlignment="Left"
-                        Padding="14,5" Margin="0,10,0,0" Click="BtnDxvk_Click"/>
+                <TextBlock Style="{StaticResource Sub}"
+                           Text="DXVK es un traductor grafico (DirectX a Vulkan) que en ciertos casos baja la carga del procesador y sube los fps. Esto te dice si en TU caso conviene."/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <Border x:Name="DxvkDot" Width="10" Height="10" CornerRadius="5" Background="#777" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtDxvkVerdict" Text="Conecta un juego" FontSize="15" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                </StackPanel>
+                <TextBlock x:Name="TxtDxvk" Text="Abri un juego con FrameLCDoctor para ver si DXVK te conviene."
+                           TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                <Expander Header="¿Por que?" Foreground="{StaticResource Text}"
+                          FontSize="12" Margin="0,10,0,0">
+                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="2,8,0,0"
+                               Text="DXVK no es 'Vulkan nativo': es un traductor que pasa el DirectX 11 del juego a Vulkan en vivo. Vulkan anda excelente en NVIDIA, AMD e Intel por igual. La ganancia de DXVK es: lo que cuesta el DirectX 11 nativo, menos lo que cuesta traducir a Vulkan. En AMD el DirectX 11 carga mucho la CPU, asi que traducir ahorra bastante y subis fps. En NVIDIA el DirectX 11 ya es muy eficiente, asi que traducir casi no ahorra (y DXVK suma su propio costo: traduccion + compilar shaders). Por eso DXVK rinde mas en AMD: no es que Vulkan sea malo en NVIDIA, es que NVIDIA ya parte de un DirectX muy bueno."/>
+                </Expander>
+                <Button x:Name="BtnDxvk" Content="¿Que es DXVK? / Descargar" HorizontalAlignment="Left" Padding="14,6" Margin="0,12,0,0" Click="BtnDxvk_Click"/>
             </StackPanel>
         </Border>
     </Grid>
+    </ScrollViewer>
 </Window>

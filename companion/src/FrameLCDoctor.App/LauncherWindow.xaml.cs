@@ -56,34 +56,59 @@ public partial class LauncherWindow : Window
         Select(dlg.FileName, isX64 ? api : GfxApi.Unknown, "");
     }
 
+    private static readonly Color Green = Color.FromRgb(0x5C, 0xC8, 0x7A);
+    private static readonly Color Red   = Color.FromRgb(0xE0, 0x5A, 0x5A);
+    private static readonly Color Gray  = Color.FromRgb(0x9A, 0x9A, 0xA6);
+
     private void Select(string exe, GfxApi api, string appId)
     {
         _exe = exe; _api = api; _appId = appId; _gameDir = Path.GetDirectoryName(exe) ?? "";
         TxtExe.Text = exe;
-        TxtApi.Text = "API: " + api;
+
+        bool supported = PeAnalyzer.ProxyDllName(api) != null;
+        TxtApiVal.Text = api == GfxApi.Unknown ? "no reconocida"
+                       : supported ? $"{api}  -  soportada"
+                       : $"{api}  -  no soportada todavia";
+        TxtApiVal.Foreground = new SolidColorBrush(supported ? Green : Red);
 
         var (det, reason) = AntiCheat.Scan(exe, PeAnalyzer.ReadImports(exe).importedDlls);
         _acDetected = det;
-        TxtAc.Text = det ? "ANTI-CHEAT detectado" : "sin anti-cheat";
-        BadgeAc.Background = new SolidColorBrush(det ? Color.FromRgb(0xC0, 0x3A, 0x3A) : Color.FromRgb(0x3A, 0x9E, 0x5A));
+        TxtAcVal.Text = det ? $"DETECTADO  -  instalacion bloqueada ({reason})" : "no detectado  -  seguro";
+        TxtAcVal.Foreground = new SolidColorBrush(det ? Red : Green);
 
-        bool supported = PeAnalyzer.ProxyDllName(api) != null;
         bool installed = Installer.IsInstalled(_gameDir);
-        TxtInstalled.Text = installed ? "FrameLCDoctor YA instalado aca." : "";
+        TxtInstVal.Text = installed ? "instalado en este juego" : "no instalado";
+        TxtInstVal.Foreground = new SolidColorBrush(installed ? Green : Gray);
 
         BtnInstall.IsEnabled = supported && !det && !installed;
         BtnUninstall.IsEnabled = installed;
         BtnLaunch.IsEnabled = true;
 
-        if (det) TxtStatus.Text = $"BLOQUEADO: {reason}. Inyectar aca puede banear tu cuenta. No se permite.";
-        else if (!supported) TxtStatus.Text = $"API {api} no soportada todavia (solo D3D11 / DXGI-D3D12).";
-        else TxtStatus.Text = installed ? "Listo. Arranca el juego y abri el panel." : "Limpio. Pode instalar.";
+        if (det)
+            SetStatus("No se puede instalar aca",
+                $"Este juego usa anti-cheat ({reason}). Inyectar un DLL puede banear tu cuenta de forma permanente, asi que FrameLCDoctor lo bloquea. Solo single-player sin anti-cheat.");
+        else if (!supported)
+            SetStatus("Juego no soportado todavia",
+                $"La API {api} aun no esta soportada. Por ahora andan los juegos D3D11 y D3D12/DXGI.");
+        else if (installed)
+            SetStatus("Ya esta instalado",
+                "Arranca el juego (boton Lanzar o por Steam) y abri el panel para ver el diagnostico. Para sacarlo, Desinstalar.");
+        else
+            SetStatus("Listo para instalar",
+                "Tocando Instalar dejas el juego preparado. Despues arrancalo y abri el panel. Todo reversible.");
+    }
+
+    private void SetStatus(string title, string detail)
+    {
+        TxtStatus.Text = title;
+        TxtStatusDetail.Text = detail;
     }
 
     private void ResetBadges()
     {
-        TxtApi.Text = "API: --"; TxtAc.Text = "anti-cheat: --";
-        BadgeAc.Background = new SolidColorBrush(Color.FromRgb(0x55, 0x55, 0x55));
+        TxtApiVal.Text = "--"; TxtApiVal.Foreground = new SolidColorBrush(Gray);
+        TxtAcVal.Text = "--";  TxtAcVal.Foreground = new SolidColorBrush(Gray);
+        TxtInstVal.Text = "--"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
         SetButtons(false);
     }
 
@@ -91,17 +116,28 @@ public partial class LauncherWindow : Window
 
     private void BtnInstall_Click(object sender, RoutedEventArgs e)
     {
-        if (_acDetected) { TxtStatus.Text = "No: anti-cheat detectado."; return; }
+        if (_acDetected) { SetStatus("Bloqueado", "Anti-cheat detectado: no se instala (riesgo de ban)."); return; }
         var (ok, msg) = Installer.Install(_exe, _api);
-        TxtStatus.Text = msg;
-        if (ok) { BtnInstall.IsEnabled = false; BtnUninstall.IsEnabled = true; TxtInstalled.Text = "FrameLCDoctor instalado."; }
+        if (ok)
+        {
+            BtnInstall.IsEnabled = false; BtnUninstall.IsEnabled = true;
+            TxtInstVal.Text = "instalado en este juego"; TxtInstVal.Foreground = new SolidColorBrush(Green);
+            SetStatus("Instalado", "Ahora arranca el juego (Lanzar o por Steam) y abri el panel de FrameLCDoctor.");
+        }
+        else SetStatus("No se pudo instalar", msg);
     }
 
     private void BtnUninstall_Click(object sender, RoutedEventArgs e)
     {
         var (ok, msg) = Installer.Uninstall(_gameDir, _api);
-        TxtStatus.Text = msg;
-        if (ok) { BtnUninstall.IsEnabled = false; BtnInstall.IsEnabled = PeAnalyzer.ProxyDllName(_api) != null && !_acDetected; TxtInstalled.Text = ""; }
+        if (ok)
+        {
+            BtnUninstall.IsEnabled = false;
+            BtnInstall.IsEnabled = PeAnalyzer.ProxyDllName(_api) != null && !_acDetected;
+            TxtInstVal.Text = "no instalado"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
+            SetStatus("Desinstalado", "El juego vuelve a su DLL normal. No quedo nada de FrameLCDoctor.");
+        }
+        else SetStatus("No se pudo desinstalar", msg);
     }
 
     private void BtnLaunch_Click(object sender, RoutedEventArgs e)
@@ -110,8 +146,8 @@ public partial class LauncherWindow : Window
         {
             string target = _appId.Length > 0 ? $"steam://rungameid/{_appId}" : _exe;
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = target, UseShellExecute = true });
-            TxtStatus.Text = "lanzando... abri el panel para ver el diagnostico.";
+            SetStatus("Lanzando el juego...", "Cuando entre, abri el panel de FrameLCDoctor para ver el diagnostico en vivo.");
         }
-        catch (Exception ex) { TxtStatus.Text = "no pude lanzar: " + ex.Message; }
+        catch (Exception ex) { SetStatus("No pude lanzar el juego", ex.Message); }
     }
 }

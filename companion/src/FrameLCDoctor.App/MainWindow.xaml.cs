@@ -50,6 +50,7 @@ public partial class MainWindow : Window
     private void UpdateUi(FrameSignals s)
     {
         TxtStatus.Text = "conectado";
+        StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x5C, 0xC8, 0x7A));
         TxtFps.Text = s.DisplayFps.ToString("F0", CultureInfo.InvariantCulture);
         TxtFrametime.Text = $"{s.FrametimeMs:F1} ms  (p99 {s.FrametimeP99:F1})";
 
@@ -62,10 +63,20 @@ public partial class MainWindow : Window
         TxtHeadroom.Text = s.HeadroomIndex.ToString("F0", CultureInfo.InvariantCulture);
         TxtVerdict.Text = s.Verdict;
         TxtSuggestion.Text = s.Suggestion;
-        TxtMoreFps.Text = s.MoreFpsLikely ? "+ fps posible" : "";
-        TxtMoreFps.Foreground = new SolidColorBrush(s.MoreFpsLikely ? Color.FromRgb(0x5C, 0xD6, 0x7A) : Colors.Gray);
+        MoreFpsPill.Visibility = s.MoreFpsLikely ? Visibility.Visible : Visibility.Collapsed;
 
-        TxtDxvk.Text = DxvkAdvisor.Advise(s.Bottleneck, _vendor);
+        var adv = DxvkAdvisor.Advise(s.Bottleneck, _vendor);
+        TxtDxvkVerdict.Text = adv.Verdict;
+        TxtDxvk.Text = adv.Reason;
+        var c = adv.Level switch
+        {
+            DxvkRec.Recommended   => Color.FromRgb(0x5C, 0xC8, 0x7A),
+            DxvkRec.Unlikely      => Color.FromRgb(0xE0, 0xA5, 0x4F),
+            DxvkRec.NotApplicable => Color.FromRgb(0x6E, 0x8E, 0xC0),
+            _                     => Color.FromRgb(0x9A, 0x9A, 0xA6),
+        };
+        TxtDxvkVerdict.Foreground = new SolidColorBrush(c);
+        DxvkDot.Background = new SolidColorBrush(c);
     }
 
     private void BtnGames_Click(object sender, RoutedEventArgs e)
