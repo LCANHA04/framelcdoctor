@@ -17,11 +17,15 @@ struct FrameSignals {
     uint32_t swapFlags     = 0;
 };
 
-// TODO P1: Start()/Stop(); a present-hook callback feeds timestamps in; GPU/CPU
-// occupancy is merged from the companion (PDH) over IPC and/or timestamp queries.
+// P0: the present hook feeds OnPresent() once per top-level present; the profiler
+// derives frametime / present-rate / displayFps. GPU/CPU occupancy (gpuBusyPct,
+// cpuMainPct) is merged from the companion (PDH) over IPC and/or timestamp queries (P1).
 namespace profiler {
     void Start();
     void Stop();
+    void OnPresent();             // call once per present (from the hook orchestrator)
+    void SetPpf(int ppf);         // presents per displayed frame (from game profile)
+    void MergeOsMetrics(double gpuBusyPct, double cpuMainPct);  // from companion over IPC
     FrameSignals Snapshot();
 }
 

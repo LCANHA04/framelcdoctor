@@ -32,6 +32,30 @@ Eso hoy lo hace un experto a mano (lo que hicimos toda la sesión). FrameDoctor 
   - **Librería de casos por juego** (perfiles) contribuible por la comunidad.
   - Corrección de timestep por perfil (lo que SK no generaliza).
 
+## 1b. Headroom Index — "¿le saco más fps?"
+
+Además de diagnosticar *errores*, FrameLCDoctor responde una pregunta que el usuario
+siempre quiere: **¿estoy exprimiendo el hardware al máximo, o hay fps libres por agarrar?**
+
+Mecánica: detectar el **cuello de botella** (el poste más largo) y medir cuánto queda
+**ocioso en el recurso que NO es el cuello** — ese ocioso = potencial de fps no aprovechado.
+
+| GPU% | CPU (core pico) | Veredicto | ¿Más fps? |
+|---|---|---|---|
+| ~99% | bajo | GPU-bound, exprimida al máximo | solo bajando settings/resolución |
+| ~10-40% | un core ~100% | CPU-bound (single-thread), GPU ociosa | **sí** — GPU sin usar (DXVK / menos draw-calls) |
+| moderados + fps capeado | — | cap-limited | **sí, fácil** — sacar el cap |
+| ambos altos y parejos | — | balanceado, cerca del máximo | poco margen |
+
+Salida (`HeadroomReport`, `core/include/flcd/headroom.h`):
+- `bottleneck` (GPU / CPU-single / CPU-multi / cap / balanced)
+- `utilizationIndex` (cuán exprimido está el recurso limitante, ~100 = al palo)
+- `headroomIndex` (capacidad ociosa en el no-cuello = la oportunidad)
+- `moreFpsLikely` + `verdict` + `suggestion` (paso concreto atado a un remedio/setting)
+
+Es a la vez **diferenciador** (ningún tool mainstream da un "índice de aprovechamiento"
+con veredicto accionable) y la base natural para sugerir el remedio correcto.
+
 ## 2. Arquitectura
 
 ```
