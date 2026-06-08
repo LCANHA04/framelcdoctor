@@ -53,6 +53,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- header -->
@@ -144,8 +145,18 @@
             </StackPanel>
         </Border>
 
-        <!-- remedies -->
+        <!-- how to gain fps -->
         <Border Grid.Row="3" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H}" Text="COMO GANAR FPS"/>
+                <TextBlock x:Name="TxtSettingsTitle" Style="{StaticResource Sub}"
+                           Text="Conecta un juego para ver que conviene cambiar." TextWrapping="Wrap"/>
+                <StackPanel x:Name="SettingsList"/>
+            </StackPanel>
+        </Border>
+
+        <!-- remedies -->
+        <Border Grid.Row="4" Style="{StaticResource Card}">
             <StackPanel>
                 <TextBlock Style="{StaticResource H}" Text="REMEDIOS"/>
                 <TextBlock Style="{StaticResource Sub}" Text="limita el fps (solo baja; 60 = velocidad correcta en motores de paso fijo)"/>
@@ -165,7 +176,7 @@
         </Border>
 
         <!-- dxvk advisor -->
-        <Border Grid.Row="4" Style="{StaticResource Card}">
+        <Border Grid.Row="5" Style="{StaticResource Card}">
             <StackPanel>
                 <DockPanel Margin="0,0,0,2">
                     <TextBlock Style="{StaticResource H}" Text="¿DXVK TE DARIA MAS FPS?" DockPanel.Dock="Left"/>

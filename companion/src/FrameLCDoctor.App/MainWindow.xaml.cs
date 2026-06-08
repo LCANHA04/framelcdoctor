@@ -81,6 +81,30 @@ public partial class MainWindow : Window
         };
         TxtDxvkVerdict.Foreground = new SolidColorBrush(c);
         DxvkDot.Background = new SolidColorBrush(c);
+
+        UpdateSettings(s.Bottleneck);
+    }
+
+    private string _lastSettingsBn = "";
+    private void UpdateSettings(string bottleneck)
+    {
+        if (bottleneck == _lastSettingsBn) return;   // only rebuild when the bottleneck changes
+        _lastSettingsBn = bottleneck;
+        var (title, items) = SettingsAdvisor.Advise(bottleneck);
+        TxtSettingsTitle.Text = title;
+        SettingsList.Children.Clear();
+        var accent = (System.Windows.Media.Brush)FindResource("Accent");
+        var text = (System.Windows.Media.Brush)FindResource("Text");
+        foreach (var it in items)
+        {
+            var row = new System.Windows.Controls.StackPanel
+            { Orientation = System.Windows.Controls.Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            row.Children.Add(new System.Windows.Controls.TextBlock
+            { Text = "•", Foreground = accent, Margin = new Thickness(0, 0, 8, 0) });
+            row.Children.Add(new System.Windows.Controls.TextBlock
+            { Text = it, TextWrapping = TextWrapping.Wrap, Foreground = text });
+            SettingsList.Children.Add(row);
+        }
     }
 
     private double[] _lastFt = Array.Empty<double>();
