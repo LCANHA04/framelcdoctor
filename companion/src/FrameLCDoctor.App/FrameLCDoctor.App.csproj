@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>FrameLCDoctor</RootNamespace>
+    <AssemblyName>FrameLCDoctor</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <!-- P0: console orchestrator. UI (Avalonia vs WPF) decided in P0; add the UI
+       project then. PDH GPU/CPU metrics and the named-pipe IPC client land here. -->
+
+</Project>

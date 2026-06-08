@@ -1,0 +1,10 @@
+{
+  "name": "framelcdoctor",
+  "version": "0.0.1",
+  "description": "Diagnosis-driven game performance/timing tool (core).",
+  "dependencies": [
+    "minhook",
+    "imgui",
+    "tomlplusplus"
+  ]
+}

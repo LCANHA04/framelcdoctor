@@ -1,0 +1,50 @@
+# FrameLCDoctor game profile - NieR Replicant ver.1.22474487139
+# First real profile. Everything here was learned by reverse engineering the title.
+
+[game]
+name        = "NieR Replicant ver.1.22474487139..."
+exe         = "NieR Replicant ver.1.22474487139.exe"
+steam_appid = 1113560
+developer   = "Toylogic Inc."
+publisher   = "Square Enix"
+engine      = "Toylogic (proprietary)"
+build       = "2021-06-02"          # PE timestamp
+toolchain   = "MSVC (VS2017, linker 14.16)"
+
+[graphics]
+api          = "d3d11"
+proxy_dll    = "d3d11.dll"           # exe imports D3D11CreateDevice; not a dxgi KnownDLL here
+swapchain    = "FLIP_DISCARD, borderless windowed"
+presents_per_frame = 2               # engine calls Present (vtable #8) twice per displayed frame
+present_path = "CreateSwapChainForHwnd"
+vsync_blocks = false                 # already presents without vsync block
+
+[timing]
+fixed_timestep   = true              # sim advances a fixed 1/60 per displayed frame
+timestep_seconds = 0.016666668       # 1/60 (float 0x3C888889)
+# Consequence: uncapping (FpsControlDisable=1) runs the game faster (speedup).
+# 60 fps = correct speed.
+
+[caps]
+# The default 60 cap is the engine's own software limiter (FpsControl), NOT vsync.
+internal_limiter   = "FpsControl"
+disable_via        = "drawing_settings.ini: FpsControlDisable=1"
+
+[remedies]
+# What FrameLCDoctor should offer for this title.
+frame_limiter = { target_fps = 60, presents_per_frame = 2 }   # implemented (NieR limiter)
+timestep_fix  = { status = "research" }                       # Option B: not solved yet
+
+[notes.reversing]
+# Static-analysis leads (image base 0x140000000).
+const_1_60_rva   = "0xABDC14"        # va 0x140ABDC14, read at init table-build 0x140015848
+const_60_rva     = "0x32E7418"       # global init=60.0 (NOT the live dt; poking it had no effect)
+coeff_table_rva  = "0x4B1D3EC"       # table built with 1/60 baked in at init
+# dt is consumed via object-pointer indirection; static RIP xrefs insufficient.
+# Next: hardware breakpoint on const_1_60 during gameplay to find the live reader.
+
+[notes.platform]
+# Different machine, different root cause:
+# RX 6600 dropped to ~23-30 with GPU ~10% / CPU ~90% -> CPU-bound from AMD's DX11
+# driver overhead. Fixed by DXVK (D3D11 -> Vulkan), NOT by the frame limiter.
+amd_dx11_cpu_bound_fix = "dxvk"

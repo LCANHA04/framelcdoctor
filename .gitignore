@@ -1,0 +1,31 @@
+# Build output
+/build/
+/out/
+[Bb]in/
+[Oo]bj/
+*.obj
+*.exp
+*.lib
+*.pdb
+*.ilk
+
+# vcpkg
+/vcpkg_installed/
+/third_party/vcpkg/
+
+# .NET
+*.user
+.vs/
+artifacts/
+
+# IDE
+.idea/
+*.suo
+
+# Tool output / logs
+*.log
+__pycache__/
+*.pyc
+
+# Local game-specific generated forwarders (regenerated per target)
+core/inject/forwarders.generated.h
