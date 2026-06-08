@@ -28,14 +28,28 @@ void OnPresent()
     flcd::profiler::OnPresent();
 }
 
+int IniInt(const wchar_t* section, const wchar_t* key, int def)
+{
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(GetModuleHandleW(nullptr), path, MAX_PATH);   // next to the .exe
+    if (wchar_t* s = wcsrchr(path, L'\\'))
+        wcscpy_s(s + 1, MAX_PATH - (s + 1 - path), L"framelcdoctor.ini");
+    return GetPrivateProfileIntW(section, key, def, path);
+}
+
 DWORD WINAPI BootThread(LPVOID)
 {
     flcd::Log("=== FrameLCDoctor core (P0) ===");
 
+    // P0 bootstrap config (a placeholder until the companion/profile drives this live).
+    int ppf      = IniInt(L"core", L"Ppf", 1);
+    int limitFps = IniInt(L"core", L"LimitFps", 0);   // 0 = uncapped
+
     g_limiter.Init();
-    g_limiter.SetTarget(0, 1);          // uncapped by default; companion/profile sets this
+    g_limiter.SetTarget(limitFps, ppf);
     flcd::profiler::Start();
-    flcd::profiler::SetPpf(1);          // overridden per game profile
+    flcd::profiler::SetPpf(ppf);
+    flcd::Log("config: ppf=%d limitFps=%d", ppf, limitFps);
 
     flcd::hooks::SetOnPresent(&OnPresent);
     if (!flcd::hooks::InstallD3D11PresentHook())
