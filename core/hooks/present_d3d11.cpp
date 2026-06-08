@@ -10,6 +10,7 @@
 #include <windows.h>
 #include <dxgi1_2.h>
 #include "flcd/hooks.h"
+#include "flcd/overlay.h"
 #include "flcd/log.h"
 
 namespace flcd::hooks {
@@ -23,22 +24,23 @@ typedef HRESULT(STDMETHODCALLTYPE* Present1_t)(IDXGISwapChain1*, UINT, UINT, con
 Present_t  oPresent  = nullptr;
 Present1_t oPresent1 = nullptr;
 
-void FireOnce()
+void FireOnce(IDXGISwapChain* sc)
 {
-    if (g_onPresent && InterlockedCompareExchange(&g_inPresent, 1, 0) == 0) {
-        g_onPresent();
+    if (InterlockedCompareExchange(&g_inPresent, 1, 0) == 0) {
+        if (g_onPresent) g_onPresent();
+        flcd::overlay::OnPresent(sc);   // draw HUD into the back buffer before present
         InterlockedExchange(&g_inPresent, 0);
     }
 }
 
 HRESULT STDMETHODCALLTYPE hkPresent(IDXGISwapChain* s, UINT sync, UINT flags)
 {
-    FireOnce();
+    FireOnce(s);
     return oPresent(s, sync, flags);
 }
 HRESULT STDMETHODCALLTYPE hkPresent1(IDXGISwapChain1* s, UINT sync, UINT flags, const DXGI_PRESENT_PARAMETERS* p)
 {
-    FireOnce();
+    FireOnce((IDXGISwapChain*)s);
     return oPresent1(s, sync, flags, p);
 }
 

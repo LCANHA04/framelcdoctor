@@ -9,12 +9,13 @@ $vcvars = "$vs\VC\Auxiliary\Build\vcvars64.bat"
 $prox = "$root\companion\src\FrameLCDoctor.App\proxies"
 New-Item -ItemType Directory -Force $prox, "$root\build-pkg" | Out-Null
 
-$src = "core\inject\dllmain.cpp core\hooks\present_d3d11.cpp core\profiler\frame_profiler.cpp core\remedies\frame_limiter.cpp core\remedies\control.cpp core\ipc\pipe_server.cpp core\classify\headroom.cpp"
+$im = "third_party\imgui"
+$src = "core\inject\dllmain.cpp core\hooks\present_d3d11.cpp core\profiler\frame_profiler.cpp core\remedies\frame_limiter.cpp core\remedies\control.cpp core\ipc\pipe_server.cpp core\classify\headroom.cpp core\overlay\overlay_d3d11.cpp $im\imgui.cpp $im\imgui_draw.cpp $im\imgui_tables.cpp $im\imgui_widgets.cpp $im\backends\imgui_impl_dx11.cpp $im\backends\imgui_impl_win32.cpp"
 foreach ($name in @("d3d11", "dxgi")) {
     python "$root\tools\gen_forwarders.py" "C:\Windows\System32\$name.dll" "${name}_orig" --dumpbin $dumpbin |
         Out-File -Encoding ASCII "$root\core\inject\forwarders.generated.h"
     $out = "$prox\$name.dll"
-    $cmd = "call `"$vcvars`" >nul && cd /d `"$root`" && cl /nologo /O2 /MT /LD /EHsc /std:c++17 /DUNICODE /D_UNICODE /DNOMINMAX /Icore\include $src /Fobuild-pkg\ /Fe:`"$out`" /link winmm.lib"
+    $cmd = "call `"$vcvars`" >nul && cd /d `"$root`" && cl /nologo /O2 /MT /LD /EHsc /std:c++17 /DUNICODE /D_UNICODE /DNOMINMAX /Icore\include /I$im $src /Fobuild-pkg\ /Fe:`"$out`" /link winmm.lib d3dcompiler.lib dwmapi.lib"
     cmd /c $cmd | Out-Null
     foreach ($ext in 'lib','exp') { [System.IO.File]::Delete("$prox\$name.$ext") }
     Write-Host "built $out"

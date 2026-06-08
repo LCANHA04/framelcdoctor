@@ -29,3 +29,4 @@ __pycache__/
 
 # Local game-specific generated forwarders (regenerated per target)
 core/inject/forwarders.generated.h
+/third_party/imgui/

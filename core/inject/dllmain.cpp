@@ -15,6 +15,7 @@
 #include "flcd/hooks.h"
 #include "flcd/profiler.h"
 #include "flcd/control.h"
+#include "flcd/overlay.h"
 #include "flcd/ipc.h"
 
 namespace {
@@ -48,6 +49,7 @@ DWORD WINAPI BootThread(LPVOID)
     flcd::control::Init();
     flcd::control::SetLimiter(limitFps, ppf);
     flcd::profiler::Start();
+    flcd::overlay::Init();
     flcd::Log("config: ppf=%d limitFps=%d", ppf, limitFps);
 
     flcd::hooks::SetOnPresent(&OnPresent);
