@@ -39,9 +39,12 @@ public static class SteamLibrary
             foreach (Match m in Regex.Matches(File.ReadAllText(vdf), "\"path\"\\s*\"([^\"]+)\""))
                 libs.Add(m.Groups[1].Value.Replace(@"\\", @"\"));
 
-        foreach (var lib in libs.Distinct())
+        var seenLibs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lib in libs)
         {
-            string apps = Path.Combine(lib, "steamapps");
+            string norm; try { norm = Path.GetFullPath(lib).TrimEnd('\\'); } catch { continue; }
+            if (!seenLibs.Add(norm)) continue;
+            string apps = Path.Combine(norm, "steamapps");
             if (!Directory.Exists(apps)) continue;
             foreach (var acf in Directory.GetFiles(apps, "appmanifest_*.acf"))
             {
@@ -57,7 +60,9 @@ public static class SteamLibrary
                 catch { }
             }
         }
-        return games.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
+        return games
+            .GroupBy(g => g.AppId).Select(grp => grp.First())   // a game installs once; dedup by appid
+            .OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static string Field(string t, string key)
