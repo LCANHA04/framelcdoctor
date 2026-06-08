@@ -6,9 +6,9 @@ namespace FrameLCDoctor.Launcher;
 
 public sealed class SteamGame
 {
-    public string AppId = "";
-    public string Name = "";
-    public string InstallDir = "";   // full path
+    public string AppId { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string InstallDir { get; set; } = "";   // full path (WPF binds to properties, not fields)
 }
 
 /// <summary>Enumerates installed Steam games (libraryfolders.vdf + appmanifests).</summary>

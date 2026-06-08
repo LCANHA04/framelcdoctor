@@ -23,9 +23,16 @@
                 <Button x:Name="BtnRefresh" Content="Refrescar" Click="BtnRefresh_Click"/>
                 <Button x:Name="BtnBrowse" Content="Examinar..." Click="BtnBrowse_Click"/>
             </StackPanel>
-            <ListBox x:Name="ListGames" Background="#15151A" Foreground="{StaticResource Text}"
-                     BorderBrush="#333" SelectionChanged="ListGames_SelectionChanged"
-                     DisplayMemberPath="Name"/>
+            <ListBox x:Name="ListGames" Background="#15151A"
+                     BorderBrush="#333" SelectionChanged="ListGames_SelectionChanged">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border Background="#23232B" Padding="6,4" Margin="0,1">
+                            <TextBlock Text="{Binding Name}" Foreground="#FFFFFF" FontSize="13"/>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
         </DockPanel>
 
         <!-- right: detail + actions -->
