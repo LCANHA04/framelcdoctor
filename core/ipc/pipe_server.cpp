@@ -3,6 +3,7 @@
 #include "flcd/ipc.h"
 #include "flcd/profiler.h"
 #include "flcd/headroom.h"
+#include "flcd/control.h"
 #include "flcd/log.h"
 #include <windows.h>
 #include <stdio.h>
@@ -28,13 +29,22 @@ bool FindNum(const char* json, const char* key, double* out)
 
 void HandleInbound(const char* line)
 {
+    // OS metrics: {"gpu":..,"cpuPeak":..,"cpuTotal":..}
     double gpu = -1, cpuPeak = -1, cpuTotal = -1;
     bool any = false;
     any |= FindNum(line, "gpu",      &gpu);
     any |= FindNum(line, "cpuPeak",  &cpuPeak);
     any |= FindNum(line, "cpuTotal", &cpuTotal);
     if (any) profiler::MergeOsMetrics(gpu, cpuPeak, cpuTotal);
-    // TODO P2: parse {"cmd":"limiter","fps":..,"ppf":..} and drive the limiter.
+
+    // Remedy command: {"cmd":"limiter","fps":N,"ppf":M}
+    if (strstr(line, "\"limiter\"")) {
+        double fps = 0, ppf = 0;
+        int fpsI = FindNum(line, "fps", &fps) ? (int)fps : 0;
+        int ppfI = FindNum(line, "ppf", &ppf) ? (int)ppf : 0;
+        if (ppfI < 1) { int cur; control::GetLimiter(nullptr, &cur); ppfI = cur; }
+        control::SetLimiter(fpsI, ppfI);
+    }
 }
 
 const char* BottleneckStr(Bottleneck b)

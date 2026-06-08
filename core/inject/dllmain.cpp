@@ -14,17 +14,15 @@
 #include "flcd/log.h"
 #include "flcd/hooks.h"
 #include "flcd/profiler.h"
-#include "flcd/frame_limiter.h"
+#include "flcd/control.h"
 #include "flcd/ipc.h"
 
 namespace {
 
-flcd::FrameLimiter g_limiter;
-
 // Called once per top-level present by the hook. Order: pace, then sample.
 void OnPresent()
 {
-    g_limiter.Tick();
+    flcd::control::Tick();
     flcd::profiler::OnPresent();
 }
 
@@ -45,10 +43,9 @@ DWORD WINAPI BootThread(LPVOID)
     int ppf      = IniInt(L"core", L"Ppf", 1);
     int limitFps = IniInt(L"core", L"LimitFps", 0);   // 0 = uncapped
 
-    g_limiter.Init();
-    g_limiter.SetTarget(limitFps, ppf);
+    flcd::control::Init();
+    flcd::control::SetLimiter(limitFps, ppf);
     flcd::profiler::Start();
-    flcd::profiler::SetPpf(ppf);
     flcd::Log("config: ppf=%d limitFps=%d", ppf, limitFps);
 
     flcd::hooks::SetOnPresent(&OnPresent);

@@ -5,6 +5,7 @@ add_library(flcd_core SHARED
     hooks/present_d3d11.cpp
     profiler/frame_profiler.cpp
     remedies/frame_limiter.cpp
+    remedies/control.cpp
     ipc/pipe_server.cpp
     classify/headroom.cpp
     # classify/classifier.cpp     # P1 (deferred; headroom covers the index)
