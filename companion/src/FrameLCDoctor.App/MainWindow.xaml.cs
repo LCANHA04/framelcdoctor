@@ -8,13 +8,21 @@ public partial class MainWindow : Window
 {
     private readonly CorePipeClient _client = new();
     private readonly CancellationTokenSource _cts = new();
+    private GpuVendor _vendor = GpuVendor.Unknown;
 
     public MainWindow()
     {
         InitializeComponent();
         _client.OnSignals += s => Dispatcher.Invoke(() => UpdateUi(s));
-        Loaded += (_, _) => Start();
+        Loaded += (_, _) => { DetectGpu(); Start(); };
         Closed += (_, _) => _cts.Cancel();
+    }
+
+    private void DetectGpu()
+    {
+        var (vendor, name) = GpuInfo.Detect();
+        _vendor = vendor;
+        TxtGpu2.Text = name.Length > 0 ? name : "GPU desconocida";
     }
 
     private void Start()
@@ -56,6 +64,21 @@ public partial class MainWindow : Window
         TxtSuggestion.Text = s.Suggestion;
         TxtMoreFps.Text = s.MoreFpsLikely ? "+ fps posible" : "";
         TxtMoreFps.Foreground = new SolidColorBrush(s.MoreFpsLikely ? Color.FromRgb(0x5C, 0xD6, 0x7A) : Colors.Gray);
+
+        TxtDxvk.Text = DxvkAdvisor.Advise(s.Bottleneck, _vendor);
+    }
+
+    private void BtnDxvk_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/doitsujin/dxvk/releases",
+                UseShellExecute = true
+            });
+        }
+        catch { /* no browser */ }
     }
 
     private static void SetBar(System.Windows.Controls.ProgressBar bar, System.Windows.Controls.TextBlock txt, double v)

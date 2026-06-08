@@ -24,8 +24,11 @@ struct FrameSignals {
 namespace profiler {
     void Start();
     void Stop();
-    void OnPresent();             // call once per present (from the hook orchestrator)
-    void SetPpf(int ppf);         // presents per displayed frame (from game profile)
+    // Call once per present. Returns true if this present begins a NEW displayed frame
+    // (auto-detected from the inter-present gap, so engines that present N times per
+    // frame are handled without a hard-coded ppf). The orchestrator paces the limiter
+    // only on frame boundaries.
+    bool OnPresent();
     void MergeOsMetrics(double gpuBusyPct, double cpuPeakCorePct, double cpuTotalPct);  // from companion over IPC
     FrameSignals Snapshot();
 }

@@ -19,11 +19,13 @@
 
 namespace {
 
-// Called once per top-level present by the hook. Order: pace, then sample.
+// Called once per top-level present by the hook. The profiler auto-detects displayed-
+// frame boundaries; we pace the limiter only on those (one displayed frame = one tick),
+// so no per-game ppf is needed.
 void OnPresent()
 {
-    flcd::control::Tick();
-    flcd::profiler::OnPresent();
+    if (flcd::profiler::OnPresent())
+        flcd::control::Tick();
 }
 
 int IniInt(const wchar_t* section, const wchar_t* key, int def)
