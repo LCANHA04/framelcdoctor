@@ -68,6 +68,12 @@ public partial class MainWindow : Window
         TxtDxvk.Text = DxvkAdvisor.Advise(s.Bottleneck, _vendor);
     }
 
+    private void BtnGames_Click(object sender, RoutedEventArgs e)
+    {
+        var w = new LauncherWindow { Owner = this };
+        w.Show();
+    }
+
     private void BtnDxvk_Click(object sender, RoutedEventArgs e)
     {
         try

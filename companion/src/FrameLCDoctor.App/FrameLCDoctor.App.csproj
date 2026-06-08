@@ -11,4 +11,12 @@
     <Platforms>x64</Platforms>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- prebuilt proxies the launcher deploys into game folders -->
+    <Content Include="proxies\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>proxies\%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>

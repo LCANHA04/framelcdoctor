@@ -39,8 +39,10 @@
         <!-- header -->
         <DockPanel Grid.Row="0" Margin="0,0,0,12">
             <TextBlock Text="FrameLCDoctor" FontSize="22" FontWeight="Bold"/>
+            <Button x:Name="BtnGames" Content="Juegos..." DockPanel.Dock="Right" Padding="12,4"
+                    VerticalAlignment="Center" Click="BtnGames_Click"/>
             <TextBlock x:Name="TxtStatus" Text="buscando juego..." Foreground="{StaticResource Muted}"
-                       VerticalAlignment="Bottom" Margin="12,0,0,3" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                       VerticalAlignment="Bottom" Margin="12,0,12,3" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
         </DockPanel>
 
         <!-- live performance -->
