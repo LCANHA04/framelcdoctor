@@ -24,6 +24,9 @@ int      g_framesInWin   = 0;
 
 double g_emaFrametimeMs = 0;   // displayed-frame interval, EMA
 double g_maxFrametimeMs = 0;   // window peak (rough p99)
+
+const int FT_CAP = 256;        // ring buffer of recent displayed-frame frametimes
+double g_ft[FT_CAP] = {}; int g_ftCount = 0, g_ftHead = 0;
 double g_presentRate    = 0;
 double g_displayFps     = 0;
 double g_ppfEst         = 1;   // smoothed presents-per-frame estimate
@@ -73,6 +76,8 @@ bool OnPresent()
             double ftMs = TicksToMs(now.QuadPart - g_lastFrameStart);
             g_emaFrametimeMs = g_emaFrametimeMs ? (g_emaFrametimeMs * 0.95 + ftMs * 0.05) : ftMs;
             g_maxFrametimeMs = std::max(g_maxFrametimeMs, ftMs);
+            g_ft[g_ftHead] = ftMs; g_ftHead = (g_ftHead + 1) % FT_CAP;
+            if (g_ftCount < FT_CAP) g_ftCount++;
         }
         g_lastFrameStart = now.QuadPart;
     }
@@ -104,8 +109,30 @@ FrameSignals Snapshot()
     s.gpuBusyPct   = g_gpuBusyPct;
     s.cpuMainPct   = g_cpuMainPct;
     s.cpuTotalPct  = g_cpuTotalPct;
+
+    if (g_ftCount >= 20) {
+        static double tmp[FT_CAP];
+        int n = g_ftCount;
+        for (int i = 0; i < n; ++i) tmp[i] = g_ft[i];
+        std::sort(tmp, tmp + n);
+        double p99  = tmp[(int)(0.99  * (n - 1))];
+        double p999 = tmp[(int)(0.999 * (n - 1))];
+        s.low1Fps  = p99  > 0 ? 1000.0 / p99  : 0;
+        s.low01Fps = p999 > 0 ? 1000.0 / p999 : 0;
+    }
     LeaveCriticalSection(&g_cs);
     return s;
+}
+
+int CopyRecentFrametimes(double* dst, int maxN)
+{
+    if (!g_init || !dst || maxN <= 0) return 0;
+    EnterCriticalSection(&g_cs);
+    int n = g_ftCount < maxN ? g_ftCount : maxN;
+    int start = (g_ftHead - n + FT_CAP) % FT_CAP;
+    for (int i = 0; i < n; ++i) dst[i] = g_ft[(start + i) % FT_CAP];
+    LeaveCriticalSection(&g_cs);
+    return n;
 }
 
 } // namespace flcd::profiler

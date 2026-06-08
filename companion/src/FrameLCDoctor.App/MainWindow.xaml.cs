@@ -52,7 +52,11 @@ public partial class MainWindow : Window
         TxtStatus.Text = "conectado";
         StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x5C, 0xC8, 0x7A));
         TxtFps.Text = s.DisplayFps.ToString("F0", CultureInfo.InvariantCulture);
-        TxtFrametime.Text = $"{s.FrametimeMs:F1} ms  (p99 {s.FrametimeP99:F1})";
+        TxtFrametime.Text = $"{s.FrametimeMs:F1} ms por frame";
+        TxtLow1.Text  = s.Low1Fps  >= 1 ? s.Low1Fps.ToString("F0", CultureInfo.InvariantCulture)  : "--";
+        TxtLow01.Text = s.Low01Fps >= 1 ? s.Low01Fps.ToString("F0", CultureInfo.InvariantCulture) : "--";
+        _lastFt = s.Ft ?? Array.Empty<double>();
+        DrawGraph();
 
         SetBar(BarGpu, TxtGpu, s.GpuBusyPct);
         SetBar(BarCpuPeak, TxtCpuPeak, s.CpuMainPct);
@@ -78,6 +82,27 @@ public partial class MainWindow : Window
         TxtDxvkVerdict.Foreground = new SolidColorBrush(c);
         DxvkDot.Background = new SolidColorBrush(c);
     }
+
+    private double[] _lastFt = Array.Empty<double>();
+
+    private void DrawGraph()
+    {
+        double w = GraphCanvas.ActualWidth, h = GraphCanvas.ActualHeight;
+        var ft = _lastFt;
+        if (w <= 1 || h <= 1 || ft.Length < 2) { GraphLine.Points = new System.Windows.Media.PointCollection(); return; }
+        double maxScale = Math.Max(ft.Max(), 33.3);   // floor: a 30fps spike (33ms) still fits; 60fps ~ mid
+        var pts = new System.Windows.Media.PointCollection(ft.Length);
+        for (int i = 0; i < ft.Length; i++)
+        {
+            double x = w * i / (ft.Length - 1);
+            double y = h - Math.Min(ft[i] / maxScale, 1.0) * h;   // big frametime -> spike up
+            pts.Add(new System.Windows.Point(x, y));
+        }
+        GraphLine.Points = pts;
+        GraphMax.Text = $"max {maxScale:F0} ms";
+    }
+
+    private void Graph_SizeChanged(object sender, SizeChangedEventArgs e) => DrawGraph();
 
     private void BtnGames_Click(object sender, RoutedEventArgs e)
     {

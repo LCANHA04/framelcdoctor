@@ -93,6 +93,9 @@ public sealed class FrameSignals
     public int Ppf { get; set; }
     public double FrametimeMs { get; set; }
     public double FrametimeP99 { get; set; }
+    public double Low1Fps { get; set; }
+    public double Low01Fps { get; set; }
+    public double[] Ft { get; set; } = Array.Empty<double>();
     public double GpuBusyPct { get; set; }
     public double CpuMainPct { get; set; }
     public double CpuTotalPct { get; set; }

@@ -78,11 +78,25 @@
             <StackPanel>
                 <TextBlock Style="{StaticResource H}" Text="RENDIMIENTO EN VIVO"/>
                 <TextBlock Style="{StaticResource Sub}" Text="fps y uso real de tu hardware mientras jugas"/>
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                    <TextBlock x:Name="TxtFps" Style="{StaticResource Display}" Text="--" FontSize="46" FontWeight="Bold"/>
-                    <TextBlock Text="fps" FontSize="16" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="6,0,22,10"/>
-                    <TextBlock x:Name="TxtFrametime" Text="" FontSize="13" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="0,0,0,12"/>
-                </StackPanel>
+                <DockPanel Margin="0,0,0,12">
+                    <StackPanel DockPanel.Dock="Right" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                            <TextBlock Text="1% low" Width="62" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtLow1" Text="--" FontWeight="SemiBold" FontSize="15"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="0.1% low" Width="62" Foreground="{StaticResource Muted}" FontSize="12" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="TxtLow01" Text="--" FontWeight="SemiBold" FontSize="15"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="TxtFps" Style="{StaticResource Display}" Text="--" FontSize="46" FontWeight="Bold"/>
+                            <TextBlock Text="fps" FontSize="16" Foreground="{StaticResource Muted}" VerticalAlignment="Bottom" Margin="6,0,0,10"/>
+                        </StackPanel>
+                        <TextBlock x:Name="TxtFrametime" Text="" FontSize="12" Foreground="{StaticResource Muted}" Margin="2,0,0,0"/>
+                    </StackPanel>
+                </DockPanel>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="78"/><ColumnDefinition Width="*"/><ColumnDefinition Width="52"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
@@ -96,6 +110,13 @@
                     <ProgressBar x:Name="BarCpuTotal" Style="{StaticResource Bar}" Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="0,10,0,0"/>
                     <TextBlock x:Name="TxtCpuTotal" Grid.Row="2" Grid.Column="2" Text="n/a" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,10,0,0"/>
                 </Grid>
+                <TextBlock Style="{StaticResource Sub}" Text="frametime — los picos hacia arriba son tirones (stutter)" Margin="0,14,0,4"/>
+                <Border Background="#15151A" CornerRadius="6" Height="72" Padding="2" SizeChanged="Graph_SizeChanged">
+                    <Canvas x:Name="GraphCanvas" ClipToBounds="True">
+                        <Polyline x:Name="GraphLine" Stroke="#4FA3FF" StrokeThickness="1.5"/>
+                        <TextBlock x:Name="GraphMax" Text="" Foreground="#777" FontSize="9" Canvas.Left="4" Canvas.Top="3"/>
+                    </Canvas>
+                </Border>
             </StackPanel>
         </Border>
 

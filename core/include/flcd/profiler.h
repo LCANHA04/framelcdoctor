@@ -9,7 +9,9 @@ struct FrameSignals {
     double   presentRate   = 0;   // Present calls / s
     int      ppf           = 1;   // present calls per displayed frame (engine quirk)
     double   frametimeMs   = 0;   // mean
-    double   frametimeP99  = 0;   // stutter tail
+    double   frametimeP99  = 0;   // stutter tail (window peak)
+    double   low1Fps       = 0;   // 1% low  (1000 / p99 frametime)
+    double   low01Fps      = 0;   // 0.1% low (1000 / p99.9 frametime)
     double   gpuBusyPct    = -1;  // from OS PDH or timestamp queries; -1 = unknown
     double   cpuMainPct    = -1;  // busiest single core % (single-thread signature); -1 = unknown
     double   cpuTotalPct   = -1;  // total CPU %; -1 = unknown
@@ -31,6 +33,9 @@ namespace profiler {
     bool OnPresent();
     void MergeOsMetrics(double gpuBusyPct, double cpuPeakCorePct, double cpuTotalPct);  // from companion over IPC
     FrameSignals Snapshot();
+    // Copies up to maxN most-recent displayed-frame frametimes (ms, chronological) for
+    // the live graph. Returns the count written.
+    int CopyRecentFrametimes(double* dst, int maxN);
 }
 
 } // namespace flcd

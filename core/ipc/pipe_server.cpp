@@ -86,19 +86,28 @@ DWORD WINAPI ServerThread(LPVOID)
             DWORD n = 0;
             if (ReadFile(pipe, rx, sizeof(rx) - 1, &n, nullptr) && n) { rx[n] = 0; HandleInbound(rx); }
 
-            // outbound: stream a snapshot + headroom verdict
+            // outbound: stream a snapshot + headroom verdict + recent frametime series
             FrameSignals s = profiler::Snapshot();
             HeadroomReport h = headroom::Assess(s);
-            char tx[1024];
+
+            double ft[100]; int ftn = profiler::CopyRecentFrametimes(ft, 100);
+            char ftbuf[1100]; int fo = 0;
+            fo += _snprintf_s(ftbuf + fo, sizeof(ftbuf) - fo, _TRUNCATE, "[");
+            for (int i = 0; i < ftn && fo < (int)sizeof(ftbuf) - 16; ++i)
+                fo += _snprintf_s(ftbuf + fo, sizeof(ftbuf) - fo, _TRUNCATE, "%s%.2f", i ? "," : "", ft[i]);
+            _snprintf_s(ftbuf + fo, sizeof(ftbuf) - fo, _TRUNCATE, "]");
+
+            char tx[2600];
             int len = _snprintf_s(tx, sizeof(tx), _TRUNCATE,
                 "{\"type\":\"signals\",\"displayFps\":%.1f,\"presentRate\":%.1f,\"ppf\":%d,"
-                "\"frametimeMs\":%.2f,\"frametimeP99\":%.2f,\"gpuBusyPct\":%.1f,\"cpuMainPct\":%.1f,\"cpuTotalPct\":%.1f,"
+                "\"frametimeMs\":%.2f,\"frametimeP99\":%.2f,\"low1Fps\":%.1f,\"low01Fps\":%.1f,"
+                "\"gpuBusyPct\":%.1f,\"cpuMainPct\":%.1f,\"cpuTotalPct\":%.1f,"
                 "\"bottleneck\":\"%s\",\"utilizationIndex\":%.0f,\"headroomIndex\":%.0f,\"moreFpsLikely\":%s,"
-                "\"verdict\":\"%s\",\"suggestion\":\"%s\"}\n",
-                s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99,
+                "\"verdict\":\"%s\",\"suggestion\":\"%s\",\"ft\":%s}\n",
+                s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99, s.low1Fps, s.low01Fps,
                 s.gpuBusyPct, s.cpuMainPct, s.cpuTotalPct,
                 BottleneckStr(h.bottleneck), h.utilizationIndex, h.headroomIndex,
-                h.moreFpsLikely ? "true" : "false", h.verdict.c_str(), h.suggestion.c_str());
+                h.moreFpsLikely ? "true" : "false", h.verdict.c_str(), h.suggestion.c_str(), ftbuf);
             DWORD w = 0;
             if (len <= 0 || !WriteFile(pipe, tx, (DWORD)len, &w, nullptr)) {
                 if (GetLastError() == ERROR_NO_DATA || GetLastError() == ERROR_BROKEN_PIPE) break;
