@@ -40,12 +40,15 @@ void Stop() {}
 
 void SetPpf(int ppf) { g_ppf = ppf < 1 ? 1 : ppf; }
 
+// EMA-smooth the OS metrics to stop the verdict from flickering as PDH values wobble.
+static double Ema(double cur, double sample) { return cur < 0 ? sample : cur * 0.6 + sample * 0.4; }
+
 void MergeOsMetrics(double gpuBusyPct, double cpuPeakCorePct, double cpuTotalPct)
 {
     EnterCriticalSection(&g_cs);
-    if (gpuBusyPct     >= 0) g_gpuBusyPct  = gpuBusyPct;
-    if (cpuPeakCorePct >= 0) g_cpuMainPct  = cpuPeakCorePct;
-    if (cpuTotalPct    >= 0) g_cpuTotalPct = cpuTotalPct;
+    if (gpuBusyPct     >= 0) g_gpuBusyPct  = Ema(g_gpuBusyPct,  gpuBusyPct);
+    if (cpuPeakCorePct >= 0) g_cpuMainPct  = Ema(g_cpuMainPct,  cpuPeakCorePct);
+    if (cpuTotalPct    >= 0) g_cpuTotalPct = Ema(g_cpuTotalPct, cpuTotalPct);
     LeaveCriticalSection(&g_cs);
 }
 
