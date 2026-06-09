@@ -36,6 +36,13 @@ static HWND  g_target = nullptr;
 static HWND  g_wnd = nullptr;
 static bool  g_running = true;
 
+// cursor forwarding (toggle with HOME): map a virtual cursor over the upscaled view to
+// the real pixel in the small game window, so menu clicks land right.
+static int   g_mx = 0, g_my = 0, g_sw = 0, g_sh = 0;   // upscaler monitor rect
+static float g_vx = 0, g_vy = 0;                        // virtual cursor (monitor space)
+static bool  g_forward = false;
+static bool  g_prevHome = false;
+
 static com_ptr<ID3D11Device>           g_dev;
 static com_ptr<ID3D11DeviceContext>    g_ctx;
 static com_ptr<IDXGISwapChain1>        g_swap;
@@ -131,7 +138,21 @@ static void RenderFrame()
 static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
     if (m == WM_DESTROY) { g_running = false; PostQuitMessage(0); return 0; }
-    if (m == WM_KEYDOWN && (w == VK_ESCAPE || w == VK_END)) { g_running = false; PostQuitMessage(0); return 0; }
+    if (m == WM_INPUT && g_forward) {
+        UINT sz = 0;
+        GetRawInputData((HRAWINPUT)l, RID_INPUT, nullptr, &sz, sizeof(RAWINPUTHEADER));
+        BYTE buf[64];
+        if (sz && sz <= sizeof(buf) && GetRawInputData((HRAWINPUT)l, RID_INPUT, buf, &sz, sizeof(RAWINPUTHEADER)) == sz) {
+            auto* ri = (RAWINPUT*)buf;
+            if (ri->header.dwType == RIM_TYPEMOUSE && !(ri->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE)) {
+                g_vx += ri->data.mouse.lLastX; g_vy += ri->data.mouse.lLastY;
+                if (g_vx < g_mx) g_vx = (float)g_mx; if (g_vy < g_my) g_vy = (float)g_my;
+                if (g_vx > g_mx + g_sw - 1) g_vx = (float)(g_mx + g_sw - 1);
+                if (g_vy > g_my + g_sh - 1) g_vy = (float)(g_my + g_sh - 1);
+            }
+        }
+        return 0;
+    }
     return DefWindowProc(h, m, w, l);
 }
 
@@ -162,10 +183,21 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
     // fullscreen borderless window on the primary monitor
     WNDCLASSW wc = {}; wc.lpfnWndProc = WndProc; wc.hInstance = hInst; wc.lpszClassName = L"flcd_upscaler";
     wc.hCursor = LoadCursor(nullptr, IDC_ARROW); RegisterClassW(&wc);
-    int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    g_wnd = CreateWindowExW(WS_EX_TOPMOST, wc.lpszClassName, L"FrameLCDoctor Upscaler",
-        WS_POPUP, 0, 0, sw, sh, nullptr, nullptr, hInst, nullptr);
-    ShowWindow(g_wnd, SW_SHOW);
+    // cover the monitor that the target window is on (multi-monitor aware), not always primary
+    HMONITOR mon = MonitorFromWindow(g_target, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi = { sizeof(mi) }; GetMonitorInfo(mon, &mi);
+    int mx = mi.rcMonitor.left, my = mi.rcMonitor.top;
+    int sw = mi.rcMonitor.right - mi.rcMonitor.left, sh = mi.rcMonitor.bottom - mi.rcMonitor.top;
+    g_mx = mx; g_my = my; g_sw = sw; g_sh = sh; g_vx = mx + sw / 2.f; g_vy = my + sh / 2.f;
+    // NOACTIVATE: never steal focus. TRANSPARENT: click-through, so a physical click passes
+    // through to the game window at the forwarded cursor position (works for single-window
+    // games; modern WinUI apps like Notepad ignore this - they're not the target).
+    g_wnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT, wc.lpszClassName,
+        L"FrameLCDoctor Upscaler", WS_POPUP, mx, my, sw, sh, nullptr, nullptr, hInst, nullptr);
+    ShowWindow(g_wnd, SW_SHOWNA);
+
+    RAWINPUTDEVICE rid = { 0x01, 0x02, RIDEV_INPUTSINK, g_wnd };   // generic mouse, even unfocused
+    RegisterRawInputDevices(&rid, 1, sizeof(rid));
 
     // D3D11 + swapchain
     g_dev = CreateDeviceBGRA();
@@ -196,11 +228,15 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
         WinrtDevice(), wgd::DirectXPixelFormat::B8G8R8A8UIntNormalized, 2, g_item.Size());
     g_framePool.FrameArrived({ &OnFrame });
     g_session = g_framePool.CreateCaptureSession(g_item);
-    g_session.IsCursorCaptureEnabled(false);
+    g_session.IsCursorCaptureEnabled(true);   // so the forwarded cursor shows in the view
     g_item.Closed([](auto&&, auto&&) { g_running = false; PostQuitMessage(0); });
     g_session.StartCapture();
 
-    // loop
+    // give input focus back to the game (we're a no-activate display on top of it)
+    SetForegroundWindow(g_target);
+    SetFocus(g_target);
+
+    // loop. The window doesn't take focus, so quitting is a polled global hotkey (END).
     MSG msg{};
     while (g_running) {
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -208,6 +244,24 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
             TranslateMessage(&msg); DispatchMessage(&msg);
         }
         if (!IsWindow(g_target)) break;
+        if (GetAsyncKeyState(VK_END) & 0x8000) break;   // END = quit upscaler
+
+        // HOME toggles cursor forwarding (off = gameplay/mouse-look; on = clickable menus)
+        bool home = (GetAsyncKeyState(VK_HOME) & 0x8000) != 0;
+        if (home && !g_prevHome) { g_forward = !g_forward; g_vx = g_mx + g_sw / 2.f; g_vy = g_my + g_sh / 2.f; }
+        g_prevHome = home;
+
+        if (g_forward) {   // map virtual cursor over the view -> real pixel in the game window
+            POINT o = { 0, 0 }; ClientToScreen(g_target, &o);
+            RECT cr; GetClientRect(g_target, &cr);
+            int cw = cr.right - cr.left, chh = cr.bottom - cr.top;
+            if (cw > 0 && chh > 0) {
+                float relX = (g_vx - g_mx) / (float)g_sw, relY = (g_vy - g_my) / (float)g_sh;
+                // put the real OS cursor over the matching pixel of the game window; clicks
+                // pass through our transparent window to the game there.
+                SetCursorPos((int)(o.x + relX * cw), (int)(o.y + relY * chh));
+            }
+        }
         RenderFrame();
     }
 
