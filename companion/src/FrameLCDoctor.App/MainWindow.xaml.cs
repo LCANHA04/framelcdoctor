@@ -160,7 +160,9 @@ public partial class MainWindow : Window
         var dc = RecColor(drv.Level);
         TxtDrvVerdict.Foreground = new SolidColorBrush(dc);
         DrvDot.Background = new SolidColorBrush(dc);
-        bool drvOk = _lastExe.Length > 0 && DriverOptimizer.IsNvidia(_vendor);
+        // NVIDIA = per-game (needs a connected game); AMD = global (no game required).
+        bool drvOk = DriverOptimizer.IsSupported(_vendor)
+                     && (!DriverOptimizer.IsNvidia(_vendor) || _lastExe.Length > 0);
         BtnDrvApply.IsEnabled = drvOk;
         BtnDrvRevert.IsEnabled = drvOk;
 
@@ -184,13 +186,13 @@ public partial class MainWindow : Window
 
     private void BtnDrvApply_Click(object sender, RoutedEventArgs e)
     {
-        var (ok, msg) = DriverOptimizer.Apply(_lastExe);
+        var (ok, msg) = DriverOptimizer.Apply(_vendor, _lastExe);
         TxtDrv.Text = msg;
     }
 
     private void BtnDrvRevert_Click(object sender, RoutedEventArgs e)
     {
-        var (ok, msg) = DriverOptimizer.Revert(_lastExe);
+        var (ok, msg) = DriverOptimizer.Revert(_vendor, _lastExe);
         TxtDrv.Text = msg;
     }
 

@@ -32,6 +32,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>nvdrs\%(Filename)%(Extension)</Link>
     </Content>
+    <!-- amd driver-optimizer exe (built only on a machine with the ADLX SDK) -->
+    <Content Include="amddrs\*.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>amddrs\%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>

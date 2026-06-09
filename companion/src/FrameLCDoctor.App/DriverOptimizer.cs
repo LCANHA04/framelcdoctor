@@ -12,8 +12,8 @@ public static class DriverOptimizer
     {
         GpuVendor.Nvidia => new(DxvkRec.Recommended, "Si - perfil de driver por juego",
             "Forzamos en el driver NVIDIA, solo para este juego: maximo rendimiento (saca el downclock de la GPU), baja latencia (menos input lag) y 'threaded optimization' (clave en juegos OpenGL como Minecraft Java). Reversible: borra el perfil."),
-        GpuVendor.Amd => new(DxvkRec.NotApplicable, "AMD: en camino",
-            "El optimizador de driver para AMD (ADLX: anti-lag, etc.) todavia no esta. Por ahora solo NVIDIA."),
+        GpuVendor.Amd => new(DxvkRec.Recommended, "Si - ajustes globales (experimental)",
+            "Forzamos en el driver AMD (ADLX): Anti-Lag (menos input lag) y, opcional, tope de fps a nivel driver. OJO: en AMD esto es GLOBAL (afecta todos los juegos, no solo este) - es como lo expone el SDK. Reversible. Sin validar todavia en hardware AMD."),
         GpuVendor.Intel => new(DxvkRec.NotApplicable, "Intel: no aplica",
             "No hay perfil de driver tipo NVIDIA/AMD para la GPU Intel."),
         _ => new(DxvkRec.Unknown, "GPU desconocida",
@@ -21,11 +21,14 @@ public static class DriverOptimizer
     };
 
     public static bool IsNvidia(GpuVendor v) => v == GpuVendor.Nvidia;
+    public static bool IsSupported(GpuVendor v) => v is GpuVendor.Nvidia or GpuVendor.Amd;
 
-    /// <summary>Apply the per-game NVIDIA profile. fpsCap 0 = no driver cap.</summary>
-    public static (bool ok, string msg) Apply(string exeName, int fpsCap = 0)
+    /// <summary>Apply the driver optimization. NVIDIA = per-game profile; AMD = global. fpsCap 0 = no cap.</summary>
+    public static (bool ok, string msg) Apply(GpuVendor vendor, string exeName, int fpsCap = 0)
     {
-        var (ok, app, err) = Resolve(exeName, out string exe);
+        if (vendor == GpuVendor.Amd) return ApplyAmd(fpsCap);
+
+        var (ok, app, err) = ResolveNv(exeName, out string exe);
         if (!ok) return (false, err);
         string args = $"--apply --app \"{app}\" --maxperf --ogl-threaded --lowlatency"
                     + (fpsCap > 0 ? $" --fpscap {fpsCap}" : "");
@@ -36,9 +39,11 @@ public static class DriverOptimizer
         return (false, FailMsg(code));
     }
 
-    public static (bool ok, string msg) Revert(string exeName)
+    public static (bool ok, string msg) Revert(GpuVendor vendor, string exeName)
     {
-        var (ok, app, err) = Resolve(exeName, out string exe);
+        if (vendor == GpuVendor.Amd) return RevertAmd();
+
+        var (ok, app, err) = ResolveNv(exeName, out string exe);
         if (!ok) return (false, err);
         var (code, _) = Run(exe, $"--revert --app \"{app}\"");
         return code == 0
@@ -46,7 +51,27 @@ public static class DriverOptimizer
             : (false, FailMsg(code));
     }
 
-    private static (bool ok, string app, string err) Resolve(string exeName, out string exe)
+    private static (bool ok, string msg) ApplyAmd(int fpsCap)
+    {
+        string exe = Path.Combine(AppContext.BaseDirectory, "amddrs", "flcd_amddrs.exe");
+        if (!File.Exists(exe)) return (false, "Falta flcd_amddrs.exe (se construye con el SDK de ADLX en la PC AMD).");
+        var (code, _) = Run(exe, "--apply" + (fpsCap > 0 ? $" --fpscap {fpsCap}" : ""));
+        return code == 0
+            ? (true, "Driver AMD optimizado (GLOBAL): Anti-Lag activado" + (fpsCap > 0 ? $" + tope {fpsCap} fps" : "") + ". (reversible con 'Revertir')")
+            : (false, FailMsg(code));
+    }
+
+    private static (bool ok, string msg) RevertAmd()
+    {
+        string exe = Path.Combine(AppContext.BaseDirectory, "amddrs", "flcd_amddrs.exe");
+        if (!File.Exists(exe)) return (false, "Falta flcd_amddrs.exe.");
+        var (code, _) = Run(exe, "--revert");
+        return code == 0
+            ? (true, "Driver AMD revertido: Anti-Lag y tope de fps desactivados.")
+            : (false, FailMsg(code));
+    }
+
+    private static (bool ok, string app, string err) ResolveNv(string exeName, out string exe)
     {
         exe = Path.Combine(AppContext.BaseDirectory, "nvdrs", "flcd_nvdrs.exe");
         if (string.IsNullOrWhiteSpace(exeName)) return (false, "", "No hay un juego conectado.");
@@ -59,7 +84,7 @@ public static class DriverOptimizer
 
     private static string FailMsg(int code) => code switch
     {
-        1 => "El driver rechazo el cambio (revisa que sea una GPU NVIDIA y el driver este al dia).",
+        1 => "El driver rechazo el cambio (revisa que la GPU/driver coincida y este al dia).",
         2 => "Argumentos invalidos (bug interno).",
         _ => $"No se pudo aplicar (codigo {code}).",
     };
