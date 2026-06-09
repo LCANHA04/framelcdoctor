@@ -37,6 +37,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>amddrs\%(Filename)%(Extension)</Link>
     </Content>
+    <!-- injector + injectable core (OpenGL / Minecraft diagnosis) -->
+    <Content Include="inject\flcd_inject.exe;inject\flcd_core.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>inject\%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>

@@ -14,6 +14,7 @@ public sealed class SteamGame
     public bool IsMinecraft { get; set; }
     public Minecraft.Edition McEdition { get; set; }
     public string ExePath { get; set; } = "";
+    public int McPid { get; set; }
 }
 
 /// <summary>Enumerates installed Steam games (libraryfolders.vdf + appmanifests).</summary>

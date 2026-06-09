@@ -96,6 +96,8 @@
                                 ToolTip="Borra los archivos que agrego FrameLCDoctor. El juego vuelve a la normalidad."/>
                         <Button x:Name="BtnLaunch" Content="Lanzar juego" Click="BtnLaunch_Click" IsEnabled="False"
                                 ToolTip="Arranca el juego (por Steam si corresponde)."/>
+                        <Button x:Name="BtnDiag" Content="Activar diagnostico" Click="BtnDiag_Click" IsEnabled="False"
+                                ToolTip="Inyecta el core en Minecraft (Java) para ver fps/cuello en vivo. Solo single-player."/>
                         <Button x:Name="BtnPanel" Content="Abrir panel" Click="BtnPanel_Click"
                                 ToolTip="Abre el panel de diagnostico en vivo (fps, cuello, remedios). Con el juego corriendo se engancha solo."/>
                     </StackPanel>

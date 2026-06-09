@@ -33,6 +33,14 @@ foreach ($h in "upscaler", "nvdrs", "amddrs") {
     }
 }
 
+# injector + injectable core (OpenGL/Minecraft diagnosis): ships both the exe and the dll.
+if (Test-Path "$app\inject\flcd_inject.exe") {
+    New-Item -ItemType Directory -Force "$Out\inject" | Out-Null
+    Copy-Item "$app\inject\flcd_inject.exe", "$app\inject\flcd_core.dll" "$Out\inject\" -Force
+} else {
+    Write-Host "warn: no inject\flcd_inject.exe (build core + injector with CMake to ship OpenGL diagnosis)"
+}
+
 Remove-Item "$Out\FrameLCDoctor.pdb" -ErrorAction SilentlyContinue
 
 Write-Host "Portable app -> $Out\FrameLCDoctor.exe"

@@ -31,8 +31,8 @@ public static class Minecraft
         return Edition.None;
     }
 
-    /// <summary>Find a RUNNING Minecraft and return its edition + real exe path.</summary>
-    public static (Edition ed, string exePath) FindRunning()
+    /// <summary>Find a RUNNING Minecraft and return its edition + real exe path + pid.</summary>
+    public static (Edition ed, string exePath, int pid) FindRunning()
     {
         foreach (var p in Process.GetProcesses())
         {
@@ -40,19 +40,19 @@ public static class Minecraft
             {
                 string n = p.ProcessName.ToLowerInvariant();
                 if (n == "minecraft.windows")
-                    return (Edition.Bedrock, SafePath(p) ?? "Minecraft.Windows.exe");
+                    return (Edition.Bedrock, SafePath(p) ?? "Minecraft.Windows.exe", p.Id);
                 if ((n == "javaw" || n == "java") && p.MainWindowHandle != IntPtr.Zero)
                 {
                     string title = p.MainWindowTitle ?? "";
                     string? path = SafePath(p);
                     if (title.Contains("Minecraft", StringComparison.OrdinalIgnoreCase)
                         || (path?.ToLowerInvariant().Contains("minecraft") ?? false))
-                        return (Edition.Java, path ?? "javaw.exe");
+                        return (Edition.Java, path ?? "javaw.exe", p.Id);
                 }
             }
             catch { /* protected process */ }
         }
-        return (Edition.None, "");
+        return (Edition.None, "", 0);
     }
 
     private static string? SafePath(Process p) { try { return p.MainModule?.FileName; } catch { return null; } }

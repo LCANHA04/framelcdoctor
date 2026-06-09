@@ -8,6 +8,7 @@ namespace FrameLCDoctor;
 public partial class LauncherWindow : Window
 {
     private string _exe = "", _gameDir = "", _appId = "", _manualTarget = "";
+    private int _mcPid;
     private GfxApi _api = GfxApi.Unknown;
     private bool _acDetected;
     private GameProfile? _profile;
@@ -28,12 +29,12 @@ public partial class LauncherWindow : Window
         {
             var games = SteamLibrary.InstalledGames();
             // auto-detect a running Minecraft (it isn't on Steam) and put it on top.
-            var (ed, exe) = Minecraft.FindRunning();
+            var (ed, exe, pid) = Minecraft.FindRunning();
             if (ed != Minecraft.Edition.None)
                 games.Insert(0, new SteamGame
                 {
                     Name = Minecraft.Friendly(ed) + "  ·  en ejecucion",
-                    IsMinecraft = true, McEdition = ed, ExePath = exe,
+                    IsMinecraft = true, McEdition = ed, ExePath = exe, McPid = pid,
                 });
             return games;
         }).ContinueWith(t =>
@@ -56,6 +57,7 @@ public partial class LauncherWindow : Window
         if (g.IsMinecraft)   // injected non-Steam entry -> external-tools path
         {
             TxtName.Text = Minecraft.Friendly(g.McEdition);
+            _mcPid = g.McPid;
             Select(g.ExePath, g.McEdition == Minecraft.Edition.Bedrock ? GfxApi.D3D11 : GfxApi.OpenGl, "", g.McEdition);
             return;
         }
@@ -84,7 +86,7 @@ public partial class LauncherWindow : Window
     private void BtnMinecraft_Click(object sender, RoutedEventArgs e)
     {
         ListGames.SelectedItem = null;
-        var (ed, exe) = Minecraft.FindRunning();
+        var (ed, exe, pid) = Minecraft.FindRunning();
         if (ed == Minecraft.Edition.None)
         {
             TxtName.Text = "Minecraft";
@@ -94,6 +96,7 @@ public partial class LauncherWindow : Window
             return;
         }
         TxtName.Text = Minecraft.Friendly(ed);
+        _mcPid = pid;
         Select(exe, ed == Minecraft.Edition.Bedrock ? GfxApi.D3D11 : GfxApi.OpenGl, "", ed);
     }
 
@@ -140,19 +143,27 @@ public partial class LauncherWindow : Window
         bool externalOnly = !supported && !det;
         if (externalOnly) _manualTarget = exe;
 
+        if (!isMc) _mcPid = 0;
         BtnInstall.IsEnabled = supported && !det && !installed;
         BtnUninstall.IsEnabled = installed;
         BtnLaunch.IsEnabled = !isMc;   // launching javaw.exe directly won't start MC; user opens it themselves
+        // diagnosis via injection: MC Java (OpenGL) only, and only if it's running (we have a pid).
+        // Bedrock is UWP -> CreateRemoteThread is blocked, so no inject there.
+        bool canInject = isMc && mc == Minecraft.Edition.Java && _mcPid > 0 && Injector.Available;
+        BtnDiag.IsEnabled = canInject;
 
         if (det)
             SetStatus("No se puede instalar aca",
                 $"Este juego usa anti-cheat ({reason}). Inyectar un DLL puede banear tu cuenta de forma permanente, asi que FrameLCDoctor lo bloquea. Solo single-player sin anti-cheat.");
+        else if (canInject)
+            SetStatus("Minecraft Java: diagnostico disponible (inyeccion)",
+                "Toca 'Activar diagnostico' para inyectar el core y ver fps/cuello EN VIVO dentro de MC (hookea gdi32!SwapBuffers de OpenGL). Despues 'Abrir panel'. Solo single-player. "
+                + "Tambien tenes driver optimizer + frame-gen. MC Java suele ser CPU-bound.");
         else if (externalOnly)
             SetStatus("Diagnostico en vivo no disponible - pero los tools externos si",
-                (isMc ? "Minecraft no se puede inyectar (Java es OpenGL, Bedrock es UWP), asi que el panel no va a mostrar fps/cuello. "
+                (isMc ? "Bedrock es UWP y no se puede inyectar, asi que el panel no muestra fps/cuello. "
                       : $"La API {api} no se puede inyectar todavia, asi que no hay diagnostico en vivo. ")
-                + "PERO podes usar el DRIVER OPTIMIZER, el UPSCALING y el FRAME-GEN sobre este juego: toca 'Abrir panel'. "
-                + (isMc && mc == Minecraft.Edition.Java ? "MC Java suele ser CPU-bound: el frame-gen y el 'threaded optimization' del driver le van muy bien." : ""));
+                + "PERO podes usar el DRIVER OPTIMIZER, el UPSCALING y el FRAME-GEN: toca 'Abrir panel'.");
         else if (installed)
             SetStatus("Ya esta instalado",
                 "Arranca el juego (boton Lanzar o por Steam) y abri el panel para ver el diagnostico. Para sacarlo, Desinstalar.");
@@ -254,11 +265,23 @@ public partial class LauncherWindow : Window
         TxtAcVal.Text = "--";  TxtAcVal.Foreground = new SolidColorBrush(Gray);
         TxtInstVal.Text = "--"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
         SetButtons(false);
-        _profile = null; _preset = null; _presetPath = null; _manualTarget = "";
+        _profile = null; _preset = null; _presetPath = null; _manualTarget = ""; _mcPid = 0;
         PresetPanel.Visibility = Visibility.Collapsed;
     }
 
-    private void SetButtons(bool on) { BtnInstall.IsEnabled = on; BtnUninstall.IsEnabled = on; BtnLaunch.IsEnabled = on; }
+    private void SetButtons(bool on) { BtnInstall.IsEnabled = on; BtnUninstall.IsEnabled = on; BtnLaunch.IsEnabled = on; BtnDiag.IsEnabled = on; }
+
+    private void BtnDiag_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = Injector.Inject(_mcPid);
+        SetStatus(ok ? "Diagnostico activado" : "No se pudo activar el diagnostico", msg);
+        if (ok)
+        {
+            // real telemetry will arrive over the pipe; no need for the manual fallback.
+            _manualTarget = "";
+            if (_panel is { IsLoaded: true }) _panel.Activate(); else { _panel = new MainWindow(); _panel.Closed += (_, _) => _panel = null; _panel.Show(); }
+        }
+    }
 
     private void BtnInstall_Click(object sender, RoutedEventArgs e)
     {
