@@ -64,6 +64,29 @@ static wgc::Direct3D11CaptureFramePool g_framePool{ nullptr };
 static wgc::GraphicsCaptureSession     g_session{ nullptr };
 static wgc::GraphicsCaptureItem        g_item{ nullptr };
 
+// ---- frame generation (toggle PAGE UP) ----
+// MVP: motion-compensated interpolation between the last two captured frames. A compute
+// shader does block-matching optical flow (per-block motion vectors); a pixel shader warps
+// both frames toward the midpoint and blends. We present the interpolated frame, then the
+// real one -> ~2x displayed frames. External (capture-based) so it works on any API, but it
+// adds ~1 frame of latency and can show artifacts on disocclusion/fast motion (expected MVP).
+static const int FG_BLOCK  = 16;   // motion-search block size (px)
+static const int FG_SEARCH = 8;    // motion-search radius (px)
+static bool g_fg = false;          // requested via --framegen
+static bool g_fgOn = false;        // live toggle (PAGE UP)
+static bool g_prevPgUp = false;
+static com_ptr<ID3D11Texture2D>          g_prevTex;   // previous captured frame (SRV)
+static com_ptr<ID3D11ShaderResourceView> g_prevSrv;
+static bool g_havePrev = false;                        // a real previous frame exists
+static com_ptr<ID3D11ComputeShader>      g_csMotion;
+static com_ptr<ID3D11PixelShader>        g_psInterp;
+static com_ptr<ID3D11Texture2D>          g_mvTex;     // per-block motion vectors (RG16F)
+static com_ptr<ID3D11UnorderedAccessView> g_mvUav;
+static com_ptr<ID3D11ShaderResourceView> g_mvSrv;
+static com_ptr<ID3D11Buffer>             g_cbMotion;  // {fullDims, mvDims, block, search}
+static com_ptr<ID3D11Buffer>             g_cbInterp;  // {invFull, tPhase}
+static UINT g_blocksX = 0, g_blocksY = 0;
+
 // ---- shaders (fullscreen triangle, linear-sampled upscale) ----
 static const char* kVS =
 "struct VSOut{float4 pos:SV_POSITION;float2 uv:TEXCOORD;};"
@@ -72,6 +95,38 @@ static const char* kVS =
 static const char* kPS =
 "Texture2D tx:register(t0);SamplerState sm:register(s0);"
 "float4 main(float4 p:SV_POSITION,float2 uv:TEXCOORD):SV_TARGET{return tx.Sample(sm,uv);}";
+
+// block-matching optical flow: one motion vector per FG_BLOCK tile. For each tile, search a
+// +/-srch window in the previous frame for the lowest SAD match (subsampled by 4 for speed).
+// MV stored in pixels such that Prev(p + mv) ~= Cur(p).
+static const char* kCSMotion =
+"cbuffer Cb:register(b0){uint2 fullDims;uint2 mvDims;int blk;int srch;float2 pad;};"
+"Texture2D<float4> Cur:register(t0);Texture2D<float4> Prev:register(t1);"
+"RWTexture2D<float2> MV:register(u0);"
+"[numthreads(8,8,1)]void main(uint3 id:SV_DispatchThreadID){"
+" if(id.x>=mvDims.x||id.y>=mvDims.y)return;"
+" int2 ctr=int2(id.xy)*blk+blk/2;int2 lo=int2(0,0);int2 hi=int2(fullDims)-1;"
+" float best=1e30;int2 bmv=int2(0,0);"
+" for(int dy=-srch;dy<=srch;dy++){for(int dx=-srch;dx<=srch;dx++){"
+"  float sad=0;"
+"  for(int sy=-blk/2;sy<blk/2;sy+=4){for(int sx=-blk/2;sx<blk/2;sx+=4){"
+"   int2 pc=clamp(ctr+int2(sx,sy),lo,hi);int2 pp=clamp(pc+int2(dx,dy),lo,hi);"
+"   float3 a=Cur.Load(int3(pc,0)).rgb;float3 b=Prev.Load(int3(pp,0)).rgb;"
+"   sad+=abs(a.r-b.r)+abs(a.g-b.g)+abs(a.b-b.b);}}"
+"  if(sad<best){best=sad;bmv=int2(dx,dy);}}}"
+" MV[id.xy]=float2(bmv);}";
+
+// synthesis: warp Cur and Prev toward the midpoint by the (bilinearly-sampled) motion field
+// and blend. tPhase=0.5 = halfway frame.
+static const char* kPSInterp =
+"cbuffer Cb:register(b0){float2 invFull;float tPhase;float pad;};"
+"Texture2D Cur:register(t0);Texture2D Prev:register(t1);Texture2D<float2> MV:register(t2);"
+"SamplerState sm:register(s0);"
+"float4 main(float4 p:SV_POSITION,float2 uv:TEXCOORD):SV_TARGET{"
+" float2 mvUV=MV.SampleLevel(sm,uv,0)*invFull;"
+" float3 a=Cur.SampleLevel(sm,uv+tPhase*mvUV,0).rgb;"
+" float3 b=Prev.SampleLevel(sm,uv-(1.0-tPhase)*mvUV,0).rgb;"
+" return float4(lerp(a,b,tPhase),1);}";
 
 static com_ptr<ID3D11Device> CreateDeviceBGRA()
 {
@@ -119,8 +174,18 @@ static void OnFrame(wgc::Direct3D11CaptureFramePool const& pool, winrt::Windows:
         g_shaderTex = nullptr; g_srv = nullptr;
         g_dev->CreateTexture2D(&td, nullptr, g_shaderTex.put());
         if (g_shaderTex) g_dev->CreateShaderResourceView(g_shaderTex.get(), nullptr, g_srv.put());
+        if (g_fg) {   // matching previous-frame texture for interpolation
+            g_prevTex = nullptr; g_prevSrv = nullptr; g_havePrev = false;
+            g_mvTex = nullptr; g_mvUav = nullptr; g_mvSrv = nullptr; g_blocksX = 0;
+            g_dev->CreateTexture2D(&td, nullptr, g_prevTex.put());
+            if (g_prevTex) g_dev->CreateShaderResourceView(g_prevTex.get(), nullptr, g_prevSrv.put());
+        }
     }
-    if (g_shaderTex) g_ctx->CopyResource(g_shaderTex.get(), src.get());
+    if (g_shaderTex) {
+        // keep the just-displayed frame as "previous" before overwriting with the new one
+        if (g_fg && g_prevTex) { g_ctx->CopyResource(g_prevTex.get(), g_shaderTex.get()); g_havePrev = true; }
+        g_ctx->CopyResource(g_shaderTex.get(), src.get());
+    }
 }
 
 static void RenderFrame()
@@ -141,6 +206,85 @@ static void RenderFrame()
     g_ctx->IASetInputLayout(nullptr);
     g_ctx->Draw(3, 0);
     g_swap->Present(1, 0);
+}
+
+// lazily build the frame-gen pipeline once the captured frame size is known. Returns false
+// if anything fails (caller then just shows real frames).
+static bool FrameGenEnsure()
+{
+    if (!g_csMotion) {
+        com_ptr<ID3DBlob> csb, psb, err;
+        D3DCompile(kCSMotion, strlen(kCSMotion), nullptr, nullptr, nullptr, "main", "cs_5_0", 0, 0, csb.put(), err.put());
+        if (!csb) return false;
+        g_dev->CreateComputeShader(csb->GetBufferPointer(), csb->GetBufferSize(), nullptr, g_csMotion.put());
+        D3DCompile(kPSInterp, strlen(kPSInterp), nullptr, nullptr, nullptr, "main", "ps_5_0", 0, 0, psb.put(), nullptr);
+        if (!psb) return false;
+        g_dev->CreatePixelShader(psb->GetBufferPointer(), psb->GetBufferSize(), nullptr, g_psInterp.put());
+        D3D11_BUFFER_DESC bd = {}; bd.Usage = D3D11_USAGE_DEFAULT; bd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+        bd.ByteWidth = 32; g_dev->CreateBuffer(&bd, nullptr, g_cbMotion.put());
+        bd.ByteWidth = 16; g_dev->CreateBuffer(&bd, nullptr, g_cbInterp.put());
+    }
+    if (!g_csMotion || !g_psInterp || !g_cbMotion || !g_cbInterp) return false;
+
+    if (!g_mvTex && g_texW) {
+        g_blocksX = (g_texW + FG_BLOCK - 1) / FG_BLOCK;
+        g_blocksY = (g_texH + FG_BLOCK - 1) / FG_BLOCK;
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width = g_blocksX; td.Height = g_blocksY; td.MipLevels = 1; td.ArraySize = 1;
+        td.Format = DXGI_FORMAT_R16G16_FLOAT; td.SampleDesc.Count = 1; td.Usage = D3D11_USAGE_DEFAULT;
+        td.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+        g_dev->CreateTexture2D(&td, nullptr, g_mvTex.put());
+        if (g_mvTex) { g_dev->CreateUnorderedAccessView(g_mvTex.get(), nullptr, g_mvUav.put());
+                       g_dev->CreateShaderResourceView(g_mvTex.get(), nullptr, g_mvSrv.put()); }
+    }
+    return g_mvUav && g_mvSrv;
+}
+
+// estimate motion (compute) then present one interpolated mid-frame. Returns false if not
+// ready (no previous frame yet, resources missing) so the caller can skip it this iteration.
+static bool RenderInterp()
+{
+    std::lock_guard<std::mutex> lk(g_ctxMtx);
+    if (!g_fgOn || !g_srv || !g_prevSrv || !g_havePrev) return false;
+    if (!FrameGenEnsure()) return false;
+
+    struct { UINT fw, fh, mw, mh; int blk, srch, p0, p1; } mcb =
+        { g_texW, g_texH, g_blocksX, g_blocksY, FG_BLOCK, FG_SEARCH, 0, 0 };
+    g_ctx->UpdateSubresource(g_cbMotion.get(), 0, nullptr, &mcb, 0, 0);
+
+    // --- motion estimation pass ---
+    ID3D11ShaderResourceView* csIn[2] = { g_srv.get(), g_prevSrv.get() };
+    ID3D11UnorderedAccessView* uav = g_mvUav.get();
+    ID3D11Buffer* mcbuf = g_cbMotion.get();
+    g_ctx->CSSetShader(g_csMotion.get(), nullptr, 0);
+    g_ctx->CSSetShaderResources(0, 2, csIn);
+    g_ctx->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
+    g_ctx->CSSetConstantBuffers(0, 1, &mcbuf);
+    g_ctx->Dispatch((g_blocksX + 7) / 8, (g_blocksY + 7) / 8, 1);
+    // unbind so the MV texture can be read as an SRV in the synthesis pass
+    ID3D11UnorderedAccessView* noUav = nullptr; g_ctx->CSSetUnorderedAccessViews(0, 1, &noUav, nullptr);
+    ID3D11ShaderResourceView* noSrv2[2] = { nullptr, nullptr }; g_ctx->CSSetShaderResources(0, 2, noSrv2);
+
+    // --- synthesis pass (warp + blend to the midpoint) ---
+    struct { float ifx, ify, t, p; } icb = { 1.0f / g_texW, 1.0f / g_texH, 0.5f, 0 };
+    g_ctx->UpdateSubresource(g_cbInterp.get(), 0, nullptr, &icb, 0, 0);
+    RECT rc; GetClientRect(g_wnd, &rc);
+    D3D11_VIEWPORT vp = {}; vp.Width = (float)(rc.right - rc.left); vp.Height = (float)(rc.bottom - rc.top); vp.MaxDepth = 1;
+    g_ctx->RSSetViewports(1, &vp);
+    ID3D11RenderTargetView* rtv = g_rtv.get();
+    g_ctx->OMSetRenderTargets(1, &rtv, nullptr);
+    g_ctx->VSSetShader(g_vs.get(), nullptr, 0);
+    g_ctx->PSSetShader(g_psInterp.get(), nullptr, 0);
+    ID3D11ShaderResourceView* psIn[3] = { g_srv.get(), g_prevSrv.get(), g_mvSrv.get() };
+    g_ctx->PSSetShaderResources(0, 3, psIn);
+    ID3D11SamplerState* smp = g_sampler.get(); g_ctx->PSSetSamplers(0, 1, &smp);
+    ID3D11Buffer* icbuf = g_cbInterp.get(); g_ctx->PSSetConstantBuffers(0, 1, &icbuf);
+    g_ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    g_ctx->IASetInputLayout(nullptr);
+    g_ctx->Draw(3, 0);
+    g_swap->Present(1, 0);
+    ID3D11ShaderResourceView* noSrv3[3] = { nullptr, nullptr, nullptr }; g_ctx->PSSetShaderResources(0, 3, noSrv3);
+    return true;
 }
 
 static LRESULT CALLBACK WndProc(HWND h, UINT m, WPARAM w, LPARAM l)
@@ -182,9 +326,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
 
     // parse args
     int argc = 0; LPWSTR* argv = CommandLineToArgvW(cmd, &argc);
-    for (int i = 0; i + 1 < argc; ++i) {
-        if (!wcscmp(argv[i], L"--hwnd")) g_target = (HWND)(intptr_t)_wtoi64(argv[i + 1]);
-        else if (!wcscmp(argv[i], L"--title")) { FindCtx c{ argv[i + 1], nullptr }; EnumWindows(EnumProc, (LPARAM)&c); g_target = c.found; }
+    for (int i = 0; i < argc; ++i) {
+        if (!wcscmp(argv[i], L"--framegen")) { g_fg = true; g_fgOn = true; }
+        else if (i + 1 < argc && !wcscmp(argv[i], L"--hwnd")) g_target = (HWND)(intptr_t)_wtoi64(argv[i + 1]);
+        else if (i + 1 < argc && !wcscmp(argv[i], L"--title")) { FindCtx c{ argv[i + 1], nullptr }; EnumWindows(EnumProc, (LPARAM)&c); g_target = c.found; }
     }
     if (!g_target || !IsWindow(g_target)) { MessageBoxW(nullptr, L"Ventana objetivo no encontrada.", L"flcd_upscaler", MB_ICONERROR); return 1; }
 
@@ -259,6 +404,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
         if (home && !g_prevHome) { g_forward = !g_forward; g_vx = g_mx + g_sw / 2.f; g_vy = g_my + g_sh / 2.f; }
         g_prevHome = home;
 
+        // PAGE UP toggles frame generation (only meaningful if launched with --framegen)
+        bool pgup = (GetAsyncKeyState(VK_PRIOR) & 0x8000) != 0;
+        if (pgup && !g_prevPgUp && g_fg) g_fgOn = !g_fgOn;
+        g_prevPgUp = pgup;
+
         if (g_forward) {   // map virtual cursor over the view -> real pixel in the game window
             POINT o = { 0, 0 }; ClientToScreen(g_target, &o);
             RECT cr; GetClientRect(g_target, &cr);
@@ -270,6 +420,9 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR cmd, int)
                 SetCursorPos((int)(o.x + relX * cw), (int)(o.y + relY * chh));
             }
         }
+        // frame gen: present an interpolated mid-frame, then the real one (~2x displayed).
+        // When off / not ready, just show the real frame.
+        RenderInterp();
         RenderFrame();
     }
 
