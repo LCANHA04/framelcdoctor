@@ -10,6 +10,7 @@ public partial class MainWindow : Window
     private readonly CorePipeClient _client = new();
     private readonly CancellationTokenSource _cts = new();
     private GpuVendor _vendor = GpuVendor.Unknown;
+    private int _refreshHz = DisplayInfo.RefreshHz();
 
     private string _manualExe = "";
 
@@ -184,7 +185,7 @@ public partial class MainWindow : Window
         UpscaleDot.Background = new SolidColorBrush(uc);
         BtnUpscale.IsEnabled = _lastExe.Length > 0;
 
-        var fg = Upscaler.AdviseFrameGen(s.Bottleneck, s.GpuBusyPct);
+        var fg = Upscaler.AdviseFrameGen(s.Bottleneck, s.GpuBusyPct, s.DisplayFps, _refreshHz);
         TxtFgVerdict.Text = fg.Verdict;
         TxtFg.Text = fg.Reason;
         var fc = RecColor(fg.Level);

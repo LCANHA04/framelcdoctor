@@ -21,15 +21,23 @@ public static class Upscaler
             "Abri un juego con FrameLCDoctor para ver si el upscaling te conviene."),
     };
 
-    /// <summary>Frame-gen advice. Opposite of upscaling: it COSTS GPU (optical flow + warp),
-    /// so it only pays off when the GPU has spare time. GPU-bound = counterproductive.</summary>
-    public static DxvkAdvice AdviseFrameGen(string bottleneck, double gpuPct)
+    /// <summary>Frame-gen advice. It only helps when the game runs BELOW the monitor refresh
+    /// (there's a gap to fill) AND the GPU has spare time (interpolation costs GPU). At/near the
+    /// refresh it has nothing to add; GPU-bound it's counterproductive.</summary>
+    public static DxvkAdvice AdviseFrameGen(string bottleneck, double gpuPct, double fps, int refreshHz)
     {
         bool known = bottleneck is "gpu" or "cpu-single" or "cpu-multi" or "cap" or "balanced";
         if (!known)
             return new(DxvkRec.Unknown, "Conecta un juego",
                 "Abri un juego para ver si te conviene generar frames.");
+
+        // already saturating the display -> there's no gap to fill, you don't need frame-gen.
+        if (refreshHz > 0 && fps > 0 && fps >= refreshHz * 0.9)
+            return new(DxvkRec.NotApplicable, "No lo necesitas - ya vas al tope",
+                $"Vas a ~{fps:F0} fps, al tope de tu monitor ({refreshHz}Hz): ya estas fluido, el frame-gen no tiene lugar donde meter frames (y al reemplazar reales por interpolados quedaria igual o peor). Sirve cuando NO llegas al refresh.");
+
         string g = gpuPct.ToString("F0");
+        string below = refreshHz > 0 ? $" (vas a ~{fps:F0} de {refreshHz}Hz)" : "";
         if (gpuPct >= 90)
             return new(DxvkRec.Unlikely, "No te conviene",
                 $"Tu GPU esta al maximo ({g}%): generar frames le roba tiempo a los reales, asi que bajarian los fps reales para darte interpolados. El frame-gen necesita GPU libre. (El upscaling SI sirve cuando estas GPU-bound.)");
@@ -37,7 +45,7 @@ public static class Upscaler
             return new(DxvkRec.Unlikely, "Margen justo",
                 $"Tu GPU esta bastante cargada ({g}%). Podes probar, pero el costo de interpolar puede comerse la ganancia. Rinde mejor con mas GPU libre.");
         return new(DxvkRec.Recommended, "Si - tenes margen",
-            $"Tu GPU tiene margen libre ({g}% usado): podes gastar esa GPU ociosa en interpolar frames y ganar fluidez sin sacrificar los reales. Ideal si estas CPU-bound o por debajo del refresh de tu monitor.");
+            $"No llegas al refresh{below} y tu GPU tiene margen libre ({g}% usado): podes gastar esa GPU ociosa en interpolar y rellenar hasta los {(refreshHz > 0 ? refreshHz + "Hz" : "Hz del monitor")}. Ideal si estas CPU-bound.");
     }
 
     public static (bool ok, string msg) Launch(string exeName, bool frameGen = false)
