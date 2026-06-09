@@ -35,8 +35,17 @@ public partial class MainWindow : Window
     {
         using var metrics = new SysMetrics();
         bool ok = metrics.Open();
+        int tick = 0;
         while (!ct.IsCancellationRequested)
         {
+            if (tick % 5 == 0)   // refresh optimizer info (power plan + ram hogs) every ~5s
+            {
+                string plan = SystemOptimizer.ActivePlanName();
+                bool hp = SystemOptimizer.IsHighName(plan);
+                var hogs = SystemOptimizer.TopCpuHogs(_lastExe);
+                Dispatcher.Invoke(() => UpdateOptimizer(plan, hp, hogs));
+            }
+            tick++;
             try { await Task.Delay(1000, ct); } catch { break; }
             if (!ok) continue;
             var (gpu, cpuPeak, cpuTotal) = metrics.Sample();
@@ -45,6 +54,48 @@ public partial class MainWindow : Window
                 $"{{\"gpu\":{gpu:F1},\"cpuPeak\":{cpuPeak:F1},\"cpuTotal\":{cpuTotal:F1}}}");
             await _client.SendAsync(json, ct);
         }
+    }
+
+    private void UpdateOptimizer(string plan, bool isHigh, List<(string name, double cpuPct)> hogs)
+    {
+        TxtPlan.Text = plan;
+        TxtPlan.Foreground = new SolidColorBrush(isHigh ? Color.FromRgb(0x5C, 0xC8, 0x7A) : Color.FromRgb(0xE0, 0xA5, 0x4F));
+        BtnPower.IsEnabled = !isHigh;
+        BtnPrio.IsEnabled = _lastExe.Length > 0;
+
+        HogsList.Children.Clear();
+        var muted = (System.Windows.Media.Brush)FindResource("Muted");
+        var text = (System.Windows.Media.Brush)FindResource("Text");
+        if (hogs.Count == 0)
+            HogsList.Children.Add(new System.Windows.Controls.TextBlock { Text = "nada de fondo usando CPU notable", Foreground = muted });
+        foreach (var (name, pct) in hogs)
+        {
+            var row = new System.Windows.Controls.DockPanel { Margin = new Thickness(0, 2, 0, 0) };
+            var amt = new System.Windows.Controls.TextBlock
+            { Text = $"{pct:F0}% CPU", Foreground = muted, Width = 70, TextAlignment = TextAlignment.Right };
+            System.Windows.Controls.DockPanel.SetDock(amt, System.Windows.Controls.Dock.Right);
+            row.Children.Add(amt);
+            row.Children.Add(new System.Windows.Controls.TextBlock { Text = name, Foreground = text });
+            HogsList.Children.Add(row);
+        }
+    }
+
+    private void BtnPower_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = SystemOptimizer.SetHighPerf();
+        TxtOptStatus.Text = msg;
+    }
+
+    private void BtnPrio_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = SystemOptimizer.BoostGame(_lastExe);
+        TxtOptStatus.Text = msg;
+    }
+
+    private void BtnTaskmgr_Click(object sender, RoutedEventArgs e)
+    {
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("taskmgr") { UseShellExecute = true }); }
+        catch { }
     }
 
     private void UpdateUi(FrameSignals s)

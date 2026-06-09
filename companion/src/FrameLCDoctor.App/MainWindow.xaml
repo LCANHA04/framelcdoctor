@@ -54,6 +54,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- header -->
@@ -196,6 +197,36 @@
                                Text="DXVK no es 'Vulkan nativo': es un traductor que pasa el DirectX 11 del juego a Vulkan en vivo. Vulkan anda excelente en NVIDIA, AMD e Intel por igual. La ganancia de DXVK es: lo que cuesta el DirectX 11 nativo, menos lo que cuesta traducir a Vulkan. En AMD el DirectX 11 carga mucho la CPU, asi que traducir ahorra bastante y subis fps. En NVIDIA el DirectX 11 ya es muy eficiente, asi que traducir casi no ahorra (y DXVK suma su propio costo: traduccion + compilar shaders). Por eso DXVK rinde mas en AMD: no es que Vulkan sea malo en NVIDIA, es que NVIDIA ya parte de un DirectX muy bueno."/>
                 </Expander>
                 <Button x:Name="BtnDxvk" Content="¿Que es DXVK? / Descargar" HorizontalAlignment="Left" Padding="14,6" Margin="0,12,0,0" Click="BtnDxvk_Click"/>
+            </StackPanel>
+        </Border>
+
+        <!-- system optimizer -->
+        <Border Grid.Row="6" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H}" Text="OPTIMIZAR LA PC"/>
+                <TextBlock Style="{StaticResource Sub}" Text="ganancias rapidas de fps, sobre todo en PCs de gama baja. Todo reversible."/>
+
+                <Grid Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Plan de energia:" Foreground="{StaticResource Muted}" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="TxtPlan" Text="--" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <Button x:Name="BtnPower" Content="Alto rendimiento" HorizontalAlignment="Right" Padding="12,5" Click="BtnPower_Click"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="Prioridad del proceso del juego" Foreground="{StaticResource Muted}" VerticalAlignment="Center"/>
+                    <Button x:Name="BtnPrio" Content="Subir a alta" HorizontalAlignment="Right" Padding="12,5" Click="BtnPrio_Click" IsEnabled="False"/>
+                </Grid>
+
+                <TextBlock Text="Apps de fondo usando CPU (te roban fps — cerralas):" Foreground="{StaticResource Muted}" Margin="0,4,0,4"/>
+                <StackPanel x:Name="HogsList"/>
+                <Button x:Name="BtnTaskmgr" Content="Abrir administrador de tareas" HorizontalAlignment="Left" Padding="12,5" Margin="0,8,0,0" Click="BtnTaskmgr_Click"/>
+
+                <Border Background="#15151A" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                    <TextBlock x:Name="TxtOptStatus" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
+                               Text="Activa el plan Alto rendimiento (clave en notebooks) y sube la prioridad del juego mientras jugas."/>
+                </Border>
             </StackPanel>
         </Border>
     </Grid>
