@@ -21,6 +21,25 @@ public static class Upscaler
             "Abri un juego con FrameLCDoctor para ver si el upscaling te conviene."),
     };
 
+    /// <summary>Frame-gen advice. Opposite of upscaling: it COSTS GPU (optical flow + warp),
+    /// so it only pays off when the GPU has spare time. GPU-bound = counterproductive.</summary>
+    public static DxvkAdvice AdviseFrameGen(string bottleneck, double gpuPct)
+    {
+        bool known = bottleneck is "gpu" or "cpu-single" or "cpu-multi" or "cap" or "balanced";
+        if (!known)
+            return new(DxvkRec.Unknown, "Conecta un juego",
+                "Abri un juego para ver si te conviene generar frames.");
+        string g = gpuPct.ToString("F0");
+        if (gpuPct >= 90)
+            return new(DxvkRec.Unlikely, "No te conviene",
+                $"Tu GPU esta al maximo ({g}%): generar frames le roba tiempo a los reales, asi que bajarian los fps reales para darte interpolados. El frame-gen necesita GPU libre. (El upscaling SI sirve cuando estas GPU-bound.)");
+        if (gpuPct >= 75)
+            return new(DxvkRec.Unlikely, "Margen justo",
+                $"Tu GPU esta bastante cargada ({g}%). Podes probar, pero el costo de interpolar puede comerse la ganancia. Rinde mejor con mas GPU libre.");
+        return new(DxvkRec.Recommended, "Si - tenes margen",
+            $"Tu GPU tiene margen libre ({g}% usado): podes gastar esa GPU ociosa en interpolar frames y ganar fluidez sin sacrificar los reales. Ideal si estas CPU-bound o por debajo del refresh de tu monitor.");
+    }
+
     public static (bool ok, string msg) Launch(string exeName, bool frameGen = false)
     {
         if (string.IsNullOrWhiteSpace(exeName)) return (false, "No hay un juego conectado.");

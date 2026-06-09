@@ -147,6 +147,13 @@ public partial class MainWindow : Window
         UpscaleDot.Background = new SolidColorBrush(uc);
         BtnUpscale.IsEnabled = _lastExe.Length > 0;
 
+        var fg = Upscaler.AdviseFrameGen(s.Bottleneck, s.GpuBusyPct);
+        TxtFgVerdict.Text = fg.Verdict;
+        TxtFg.Text = fg.Reason;
+        var fc = RecColor(fg.Level);
+        TxtFgVerdict.Foreground = new SolidColorBrush(fc);
+        FgDot.Background = new SolidColorBrush(fc);
+
         _lastBottleneck = s.Bottleneck;
         UpdateSettings(s.Bottleneck);
     }
