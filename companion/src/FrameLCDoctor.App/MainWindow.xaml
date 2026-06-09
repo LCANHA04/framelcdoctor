@@ -56,6 +56,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- header -->
@@ -260,6 +261,24 @@
                 <TextBlock Text="Inserta frames interpolados entre los reales. Agrega algo de latencia y puede mostrar artefactos en movimiento rapido. PAGE UP lo activa/desactiva en vivo."
                            TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Muted}" Margin="22,2,0,0"/>
                 <Button x:Name="BtnUpscale" Content="Activar upscaling" HorizontalAlignment="Left" Padding="14,6" Margin="0,12,0,0" Click="BtnUpscale_Click" IsEnabled="False"/>
+            </StackPanel>
+        </Border>
+
+        <!-- driver optimizer -->
+        <Border Grid.Row="8" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H}" Text="OPTIMIZAR EL DRIVER (mas alla del juego)"/>
+                <TextBlock Style="{StaticResource Sub}" Text="fuerza ajustes del driver de la GPU que el juego no expone, solo para este juego. Reversible: es un perfil aparte."/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <Border x:Name="DrvDot" Width="10" Height="10" CornerRadius="5" Background="#777" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtDrvVerdict" Text="Detectando GPU" FontSize="15" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                </StackPanel>
+                <TextBlock x:Name="TxtDrv" Text="Abri un juego para optimizar el driver."
+                           TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button x:Name="BtnDrvApply" Content="Optimizar driver" Padding="14,6" Click="BtnDrvApply_Click" IsEnabled="False"/>
+                    <Button x:Name="BtnDrvRevert" Content="Revertir" Padding="14,6" Margin="8,0,0,0" Click="BtnDrvRevert_Click" IsEnabled="False"/>
+                </StackPanel>
             </StackPanel>
         </Border>
     </Grid>

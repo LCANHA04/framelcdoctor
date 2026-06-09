@@ -154,6 +154,16 @@ public partial class MainWindow : Window
         TxtFgVerdict.Foreground = new SolidColorBrush(fc);
         FgDot.Background = new SolidColorBrush(fc);
 
+        var drv = DriverOptimizer.Advise(_vendor);
+        TxtDrvVerdict.Text = drv.Verdict;
+        TxtDrv.Text = drv.Reason;
+        var dc = RecColor(drv.Level);
+        TxtDrvVerdict.Foreground = new SolidColorBrush(dc);
+        DrvDot.Background = new SolidColorBrush(dc);
+        bool drvOk = _lastExe.Length > 0 && DriverOptimizer.IsNvidia(_vendor);
+        BtnDrvApply.IsEnabled = drvOk;
+        BtnDrvRevert.IsEnabled = drvOk;
+
         _lastBottleneck = s.Bottleneck;
         UpdateSettings(s.Bottleneck);
     }
@@ -170,6 +180,18 @@ public partial class MainWindow : Window
     {
         var (ok, msg) = Upscaler.Launch(_lastExe, ChkFrameGen.IsChecked == true);
         TxtUpscale.Text = msg;
+    }
+
+    private void BtnDrvApply_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = DriverOptimizer.Apply(_lastExe);
+        TxtDrv.Text = msg;
+    }
+
+    private void BtnDrvRevert_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = DriverOptimizer.Revert(_lastExe);
+        TxtDrv.Text = msg;
     }
 
     private string _lastExe = "";
