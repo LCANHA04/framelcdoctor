@@ -55,6 +55,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- header -->
@@ -233,6 +234,21 @@
                     <TextBlock x:Name="TxtOptStatus" TextWrapping="Wrap" Foreground="{StaticResource Muted}"
                                Text="Activa el plan Alto rendimiento (clave en notebooks) y sube la prioridad del juego mientras jugas."/>
                 </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- upscaling -->
+        <Border Grid.Row="7" Style="{StaticResource Card}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource H}" Text="UPSCALING (mas alla del juego)"/>
+                <TextBlock Style="{StaticResource Sub}" Text="renderiza a baja resolucion y escala a tu pantalla: la GPU dibuja menos pixeles = mas fps. Solo sirve si estas GPU-bound."/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <Border x:Name="UpscaleDot" Width="10" Height="10" CornerRadius="5" Background="#777" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtUpscaleVerdict" Text="Conecta un juego" FontSize="15" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                </StackPanel>
+                <TextBlock x:Name="TxtUpscale" Text="Abri un juego para ver si el upscaling te conviene."
+                           TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                <Button x:Name="BtnUpscale" Content="Activar upscaling" HorizontalAlignment="Left" Padding="14,6" Margin="0,12,0,0" Click="BtnUpscale_Click" IsEnabled="False"/>
             </StackPanel>
         </Border>
     </Grid>

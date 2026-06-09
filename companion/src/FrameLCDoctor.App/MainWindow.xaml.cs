@@ -135,18 +135,34 @@ public partial class MainWindow : Window
         var adv = DxvkAdvisor.Advise(s.Bottleneck, _vendor);
         TxtDxvkVerdict.Text = adv.Verdict;
         TxtDxvk.Text = adv.Reason;
-        var c = adv.Level switch
-        {
-            DxvkRec.Recommended   => Color.FromRgb(0x5C, 0xC8, 0x7A),
-            DxvkRec.Unlikely      => Color.FromRgb(0xE0, 0xA5, 0x4F),
-            DxvkRec.NotApplicable => Color.FromRgb(0x6E, 0x8E, 0xC0),
-            _                     => Color.FromRgb(0x9A, 0x9A, 0xA6),
-        };
+        var c = RecColor(adv.Level);
         TxtDxvkVerdict.Foreground = new SolidColorBrush(c);
         DxvkDot.Background = new SolidColorBrush(c);
 
+        var up = Upscaler.Advise(s.Bottleneck);
+        TxtUpscaleVerdict.Text = up.Verdict;
+        TxtUpscale.Text = up.Reason;
+        var uc = RecColor(up.Level);
+        TxtUpscaleVerdict.Foreground = new SolidColorBrush(uc);
+        UpscaleDot.Background = new SolidColorBrush(uc);
+        BtnUpscale.IsEnabled = _lastExe.Length > 0;
+
         _lastBottleneck = s.Bottleneck;
         UpdateSettings(s.Bottleneck);
+    }
+
+    private static Color RecColor(DxvkRec r) => r switch
+    {
+        DxvkRec.Recommended   => Color.FromRgb(0x5C, 0xC8, 0x7A),
+        DxvkRec.Unlikely      => Color.FromRgb(0xE0, 0xA5, 0x4F),
+        DxvkRec.NotApplicable => Color.FromRgb(0x6E, 0x8E, 0xC0),
+        _                     => Color.FromRgb(0x9A, 0x9A, 0xA6),
+    };
+
+    private void BtnUpscale_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = Upscaler.Launch(_lastExe);
+        TxtUpscale.Text = msg;
     }
 
     private string _lastExe = "";

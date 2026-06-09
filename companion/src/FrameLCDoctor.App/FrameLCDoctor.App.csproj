@@ -22,6 +22,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>profiles\%(Filename)%(Extension)</Link>
     </Content>
+    <!-- external upscaler exe -->
+    <Content Include="upscaler\*.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>upscaler\%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>
