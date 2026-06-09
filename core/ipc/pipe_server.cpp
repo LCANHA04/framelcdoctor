@@ -47,6 +47,17 @@ void HandleInbound(const char* line)
     }
 }
 
+const char* ExeName()   // base name of the running game exe, computed once (UTF-8)
+{
+    static char name[260] = {};
+    if (!name[0]) {
+        wchar_t path[MAX_PATH]; GetModuleFileNameW(GetModuleHandleW(nullptr), path, MAX_PATH);
+        wchar_t* base = wcsrchr(path, L'\\'); base = base ? base + 1 : path;
+        WideCharToMultiByte(CP_UTF8, 0, base, -1, name, (int)sizeof(name), nullptr, nullptr);
+    }
+    return name;
+}
+
 const char* BottleneckStr(Bottleneck b)
 {
     switch (b) {
@@ -99,12 +110,12 @@ DWORD WINAPI ServerThread(LPVOID)
 
             char tx[2600];
             int len = _snprintf_s(tx, sizeof(tx), _TRUNCATE,
-                "{\"type\":\"signals\",\"displayFps\":%.1f,\"presentRate\":%.1f,\"ppf\":%d,"
+                "{\"type\":\"signals\",\"exe\":\"%s\",\"displayFps\":%.1f,\"presentRate\":%.1f,\"ppf\":%d,"
                 "\"frametimeMs\":%.2f,\"frametimeP99\":%.2f,\"low1Fps\":%.1f,\"low01Fps\":%.1f,"
                 "\"gpuBusyPct\":%.1f,\"cpuMainPct\":%.1f,\"cpuTotalPct\":%.1f,"
                 "\"bottleneck\":\"%s\",\"utilizationIndex\":%.0f,\"headroomIndex\":%.0f,\"moreFpsLikely\":%s,"
                 "\"verdict\":\"%s\",\"suggestion\":\"%s\",\"ft\":%s}\n",
-                s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99, s.low1Fps, s.low01Fps,
+                ExeName(), s.displayFps, s.presentRate, s.ppf, s.frametimeMs, s.frametimeP99, s.low1Fps, s.low01Fps,
                 s.gpuBusyPct, s.cpuMainPct, s.cpuTotalPct,
                 BottleneckStr(h.bottleneck), h.utilizationIndex, h.headroomIndex,
                 h.moreFpsLikely ? "true" : "false", h.verdict.c_str(), h.suggestion.c_str(), ftbuf);

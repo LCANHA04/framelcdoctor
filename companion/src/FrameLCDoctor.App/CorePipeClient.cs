@@ -88,6 +88,7 @@ public sealed class CorePipeClient
 
 public sealed class FrameSignals
 {
+    public string Exe { get; set; } = "";
     public double DisplayFps { get; set; }
     public double PresentRate { get; set; }
     public int Ppf { get; set; }

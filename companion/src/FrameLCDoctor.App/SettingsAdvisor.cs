@@ -3,7 +3,22 @@ namespace FrameLCDoctor;
 /// <summary>Concrete, actionable in-game settings to change for more fps, by bottleneck.</summary>
 public static class SettingsAdvisor
 {
-    public static (string title, string[] items) Advise(string bottleneck) => bottleneck switch
+    public static (string title, string[] items) Advise(string bottleneck, bool fixedTimestep = false)
+    {
+        // A fixed-timestep engine (e.g. NieR) speeds up if uncapped, so the 'cap' advice
+        // must warn against removing it instead of recommending it.
+        if (bottleneck == "cap" && fixedTimestep)
+            return ("Este juego tiene paso fijo (su motor ata la velocidad a los fps):",
+                new[]
+                {
+                    "NO saques el cap: arriba de su fps base el juego se ACELERA",
+                    "Quedate en su fps de diseno (normalmente 60)",
+                    "Si querer mas fps, necesita un mod que arregle el timestep",
+                });
+        return AdviseInner(bottleneck);
+    }
+
+    private static (string title, string[] items) AdviseInner(string bottleneck) => bottleneck switch
     {
         "cpu-single" or "cpu-multi" =>
             ("Estas frenado por el procesador. Baja lo que genera trabajo de CPU (la resolucion no ayuda, la GPU te sobra):",

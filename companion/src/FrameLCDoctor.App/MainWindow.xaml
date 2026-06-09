@@ -60,7 +60,7 @@
         <Grid Grid.Row="0" Margin="0,0,0,14">
             <StackPanel HorizontalAlignment="Left">
                 <TextBlock Style="{StaticResource Display}" Text="FrameLCDoctor" FontSize="24" FontWeight="SemiBold"/>
-                <TextBlock Text="Panel de rendimiento" Foreground="{StaticResource Muted}" FontSize="12"/>
+                <TextBlock x:Name="TxtProfile" Text="Panel de rendimiento" Foreground="{StaticResource Muted}" FontSize="12"/>
             </StackPanel>
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" VerticalAlignment="Center">
                 <Border Background="#15151A" CornerRadius="12" Padding="10,5" Margin="0,0,10,0">

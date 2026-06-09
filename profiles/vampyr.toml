@@ -1,0 +1,19 @@
+# FrameLCDoctor game profile - Vampyr (Dontnod, Unreal Engine 4)
+
+[game]
+name   = "Vampyr"
+exe    = "AVGame-Win64-Shipping.exe"
+engine = "Unreal Engine 4"
+
+[graphics]
+api  = "d3d11"
+proxy_dll = "d3d11.dll"
+presents_per_frame = 1
+
+[timing]
+fixed_timestep = false        # UE4 uses a real (variable) delta; uncapping is safe
+
+[notes]
+# Single-player, no anti-cheat. Tends to be game-thread (CPU single-core) bound:
+# GPU often idle while one CPU core is maxed. More fps comes from lowering CPU-side
+# settings (draw distance, density, dynamic shadows), not resolution.

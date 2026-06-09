@@ -17,6 +17,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <Link>proxies\%(Filename)%(Extension)</Link>
     </Content>
+    <!-- per-game profiles (from the repo root) -->
+    <Content Include="..\..\..\profiles\*.toml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Link>profiles\%(Filename)%(Extension)</Link>
+    </Content>
   </ItemGroup>
 
 </Project>

@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     {
         TxtStatus.Text = "conectado";
         StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0x5C, 0xC8, 0x7A));
+        if (s.Exe != _lastExe) { _lastExe = s.Exe; LoadProfile(s.Exe); _lastSettingsBn = ""; }
         TxtFps.Text = s.DisplayFps.ToString("F0", CultureInfo.InvariantCulture);
         TxtFrametime.Text = $"{s.FrametimeMs:F1} ms por frame";
         TxtLow1.Text  = s.Low1Fps  >= 1 ? s.Low1Fps.ToString("F0", CultureInfo.InvariantCulture)  : "--";
@@ -85,12 +86,27 @@ public partial class MainWindow : Window
         UpdateSettings(s.Bottleneck);
     }
 
+    private string _lastExe = "";
+    private bool _fixedTimestep;
+
+    private void LoadProfile(string exe)
+    {
+        var p = GameProfile.Load(exe);
+        _fixedTimestep = p?.FixedTimestep ?? false;
+        if (p != null)
+            TxtProfile.Text = p.Name
+                + (p.Engine.Length > 0 ? "  ·  motor " + p.Engine : "")
+                + (p.FixedTimestep ? "  ·  paso fijo" : "");
+        else
+            TxtProfile.Text = exe.Length > 0 ? exe + "  ·  sin perfil" : "Panel de rendimiento";
+    }
+
     private string _lastSettingsBn = "";
     private void UpdateSettings(string bottleneck)
     {
         if (bottleneck == _lastSettingsBn) return;   // only rebuild when the bottleneck changes
         _lastSettingsBn = bottleneck;
-        var (title, items) = SettingsAdvisor.Advise(bottleneck);
+        var (title, items) = SettingsAdvisor.Advise(bottleneck, _fixedTimestep);
         TxtSettingsTitle.Text = title;
         SettingsList.Children.Clear();
         var accent = (System.Windows.Media.Brush)FindResource("Accent");

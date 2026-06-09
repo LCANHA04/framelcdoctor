@@ -1,7 +1,8 @@
 # Build the prebuilt proxy DLLs the launcher deploys (d3d11.dll, dxgi.dll).
 # Each is flcd_core compiled with forwarders to <name>_orig.dll. Output goes to the
 # companion's proxies/ folder (copied to the app output at build time).
-$ErrorActionPreference = "Stop"
+# (vcvars prints a benign vswhere warning to stderr; don't treat it as fatal.)
+$ErrorActionPreference = "Continue"
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $vs = "C:\Program Files\Microsoft Visual Studio\2022\Community"
 $dumpbin = (Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object FullName -match 'Hostx64\\x64' | Select-Object -First 1).FullName
@@ -16,9 +17,9 @@ foreach ($name in @("d3d11", "dxgi")) {
         Out-File -Encoding ASCII "$root\core\inject\forwarders.generated.h"
     $out = "$prox\$name.dll"
     $cmd = "call `"$vcvars`" >nul && cd /d `"$root`" && cl /nologo /O2 /MT /LD /EHsc /std:c++17 /DUNICODE /D_UNICODE /DNOMINMAX /Icore\include /I$im $src /Fobuild-pkg\ /Fe:`"$out`" /link winmm.lib d3dcompiler.lib dwmapi.lib"
-    cmd /c $cmd | Out-Null
+    cmd /c $cmd 2>&1 | Out-Null
     foreach ($ext in 'lib','exp') { [System.IO.File]::Delete("$prox\$name.$ext") }
-    Write-Host "built $out"
+    if (Test-Path $out) { Write-Host "built $out" } else { Write-Host "FAILED $out" }
 }
 [System.IO.File]::Delete("$root\core\inject\forwarders.generated.h")
 Write-Host "done."
