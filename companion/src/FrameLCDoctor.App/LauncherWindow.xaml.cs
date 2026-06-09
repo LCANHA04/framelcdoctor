@@ -232,8 +232,19 @@ public partial class LauncherWindow : Window
         {
             string target = _appId.Length > 0 ? $"steam://rungameid/{_appId}" : _exe;
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = target, UseShellExecute = true });
-            SetStatus("Lanzando el juego...", "Cuando entre, abri el panel de FrameLCDoctor para ver el diagnostico en vivo.");
+            SetStatus("Lanzando el juego...", "Cuando entre, toca 'Abrir panel' para ver el diagnostico en vivo.");
         }
         catch (Exception ex) { SetStatus("No pude lanzar el juego", ex.Message); }
+    }
+
+    private MainWindow? _panel;
+
+    private void BtnPanel_Click(object sender, RoutedEventArgs e)
+    {
+        // reuse the panel if it's already open, otherwise spawn one (clear the ref when closed).
+        if (_panel is { IsLoaded: true }) { _panel.Activate(); return; }
+        _panel = new MainWindow();
+        _panel.Closed += (_, _) => _panel = null;
+        _panel.Show();
     }
 }
