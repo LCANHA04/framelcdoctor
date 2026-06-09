@@ -10,6 +10,7 @@ public partial class LauncherWindow : Window
     private string _exe = "", _gameDir = "", _appId = "";
     private GfxApi _api = GfxApi.Unknown;
     private bool _acDetected;
+    private GameProfile? _profile;
 
     public LauncherWindow()
     {
@@ -96,6 +97,54 @@ public partial class LauncherWindow : Window
         else
             SetStatus("Listo para instalar",
                 "Tocando Instalar dejas el juego preparado. Despues arrancalo y abri el panel. Todo reversible.");
+
+        _profile = GameProfile.Load(Path.GetFileName(exe));
+        UpdatePresetUi();
+    }
+
+    private void UpdatePresetUi()
+    {
+        if (_profile is { HasPreset: true } p)
+        {
+            PresetPanel.Visibility = Visibility.Visible;
+            string? path = ConfigPreset.ResolvePath(p);
+            bool applied = ConfigPreset.IsApplied(p);
+            TxtPresetDesc.Text = $"Baja settings pesados en el config de {p.Name} para ganar fps. "
+                + "Antes de tocar nada hace un backup, asi lo podes restaurar siempre.";
+            TxtPresetChanges.Text = string.Join("\n", ConfigPreset.DescribeChanges(p).Select(s => "•  " + s));
+            TxtPresetFile.Text = path != null
+                ? "Archivo que se edita:  " + path + (applied ? "   (preset YA aplicado)" : "")
+                : "Archivo no encontrado. Abri el juego una vez para que lo cree y reintenta.";
+            BtnPresetRestore.IsEnabled = applied;
+            BtnPreset.IsEnabled = path != null && !applied;
+        }
+        else PresetPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void BtnPreset_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null) return;
+        string? path = ConfigPreset.ResolvePath(_profile);
+        string changes = string.Join("\n", ConfigPreset.DescribeChanges(_profile).Select(s => "  •  " + s));
+        var confirm = MessageBox.Show(
+            $"FrameLCDoctor va a MODIFICAR el archivo de configuracion de tu juego:\n\n{path}\n\n" +
+            $"Cambios que hace:\n{changes}\n\n" +
+            $"Se guarda una copia de seguridad ({System.IO.Path.GetFileName(path)}.flcd-bak) para restaurar cuando quieras.\n" +
+            "Aplicalo con el juego CERRADO.\n\n¿Aplicar el preset?",
+            "Aplicar preset FPS", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        var (ok, msg) = ConfigPreset.Apply(_profile);
+        SetStatus(ok ? "Preset FPS aplicado" : "No se pudo", msg);
+        UpdatePresetUi();
+    }
+
+    private void BtnPresetRestore_Click(object sender, RoutedEventArgs e)
+    {
+        if (_profile == null) return;
+        var (ok, msg) = ConfigPreset.Restore(_profile);
+        SetStatus(ok ? "Config restaurada" : "No se pudo", msg);
+        UpdatePresetUi();
     }
 
     private void SetStatus(string title, string detail)
@@ -110,6 +159,8 @@ public partial class LauncherWindow : Window
         TxtAcVal.Text = "--";  TxtAcVal.Foreground = new SolidColorBrush(Gray);
         TxtInstVal.Text = "--"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
         SetButtons(false);
+        _profile = null;
+        PresetPanel.Visibility = Visibility.Collapsed;
     }
 
     private void SetButtons(bool on) { BtnInstall.IsEnabled = on; BtnUninstall.IsEnabled = on; BtnLaunch.IsEnabled = on; }

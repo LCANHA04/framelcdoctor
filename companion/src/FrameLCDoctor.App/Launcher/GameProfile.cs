@@ -11,6 +11,13 @@ public sealed class GameProfile
     public bool FixedTimestep;
     public int Ppf;
 
+    // config preset
+    public string ConfigBase = "";
+    public string ConfigPath = "";
+    public string ConfigFormat = "";
+    public Dictionary<string, string> PresetFps = new(StringComparer.OrdinalIgnoreCase);
+    public bool HasPreset => ConfigPath.Length > 0 && PresetFps.Count > 0;
+
     public static string ProfilesDir => Path.Combine(AppContext.BaseDirectory, "profiles");
 
     public static GameProfile? Load(string exeName)
@@ -21,13 +28,21 @@ public sealed class GameProfile
             var d = Parse(file);
             if (d.TryGetValue("game.exe", out var exe) && exe.Equals(exeName, StringComparison.OrdinalIgnoreCase))
             {
-                return new GameProfile
+                var gp = new GameProfile
                 {
                     Name = d.GetValueOrDefault("game.name", exeName),
                     Engine = d.GetValueOrDefault("game.engine", ""),
                     FixedTimestep = d.GetValueOrDefault("timing.fixed_timestep", "") == "true",
                     Ppf = int.TryParse(d.GetValueOrDefault("graphics.presents_per_frame", ""), out var p) ? p : 0,
+                    ConfigBase = d.GetValueOrDefault("config.base", ""),
+                    ConfigPath = d.GetValueOrDefault("config.path", ""),
+                    ConfigFormat = d.GetValueOrDefault("config.format", ""),
                 };
+                const string pre = "preset.fps.";
+                foreach (var kv in d)
+                    if (kv.Key.StartsWith(pre, StringComparison.OrdinalIgnoreCase))
+                        gp.PresetFps[kv.Key[pre.Length..]] = kv.Value;
+                return gp;
             }
         }
         return null;

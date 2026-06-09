@@ -30,6 +30,21 @@ timestep_seconds = 0.016666668       # 1/60 (float 0x3C888889)
 internal_limiter   = "FpsControl"
 disable_via        = "drawing_settings.ini: FpsControlDisable=1"
 
+[config]
+# Where the game stores its graphics settings (flat "key = value" ini).
+base   = "documents"
+path   = "My Games/NieR Replicant ver.1.22474487139/Steam/*/drawing_settings.ini"
+format = "ini-flat"
+
+[preset.fps]
+# Low-end / max-fps preset (applied with a backup; reversible).
+shadowQuality            = 0
+isReflectionEnable       = 0
+isAmbientOcclusionEnable = 0
+isAntiAliasingEnable     = 0
+isDynamicResolutionEnable= 1
+textureFilter            = 0
+
 [remedies]
 # What FrameLCDoctor should offer for this title.
 frame_limiter = { target_fps = 60, presents_per_frame = 2 }   # implemented (NieR limiter)
