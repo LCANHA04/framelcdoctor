@@ -47,6 +47,8 @@
                     <Button x:Name="BtnRefresh" Content="Refrescar" Click="BtnRefresh_Click"/>
                     <Button x:Name="BtnBrowse" Content="Examinar .exe..." Click="BtnBrowse_Click"
                             ToolTip="Para juegos que no son de Steam: apunta al .exe a mano."/>
+                    <Button x:Name="BtnMinecraft" Content="Buscar Minecraft" Click="BtnMinecraft_Click"
+                            ToolTip="Detecta Minecraft (Java o Bedrock) en ejecucion para usar los tools externos."/>
                 </StackPanel>
                 <ListBox x:Name="ListGames" Background="#15151A" BorderBrush="#333"
                          SelectionChanged="ListGames_SelectionChanged">

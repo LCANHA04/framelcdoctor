@@ -7,7 +7,7 @@ namespace FrameLCDoctor;
 
 public partial class LauncherWindow : Window
 {
-    private string _exe = "", _gameDir = "", _appId = "";
+    private string _exe = "", _gameDir = "", _appId = "", _manualTarget = "";
     private GfxApi _api = GfxApi.Unknown;
     private bool _acDetected;
     private GameProfile? _profile;
@@ -60,20 +60,50 @@ public partial class LauncherWindow : Window
         Select(dlg.FileName, isX64 ? api : GfxApi.Unknown, "");
     }
 
+    private void BtnMinecraft_Click(object sender, RoutedEventArgs e)
+    {
+        ListGames.SelectedItem = null;
+        var (ed, exe) = Minecraft.FindRunning();
+        if (ed == Minecraft.Edition.None)
+        {
+            TxtName.Text = "Minecraft";
+            ResetBadges();
+            SetStatus("Abri Minecraft primero",
+                "No encontre Minecraft corriendo. Abrilo (Java o Bedrock), entra a un mundo, y volve a tocar 'Buscar Minecraft'. Tambien podes apuntar al javaw.exe con 'Examinar'.");
+            return;
+        }
+        TxtName.Text = Minecraft.Friendly(ed);
+        Select(exe, ed == Minecraft.Edition.Bedrock ? GfxApi.D3D11 : GfxApi.OpenGl, "", ed);
+    }
+
     private static readonly Color Green = Color.FromRgb(0x5C, 0xC8, 0x7A);
     private static readonly Color Red   = Color.FromRgb(0xE0, 0x5A, 0x5A);
     private static readonly Color Gray  = Color.FromRgb(0x9A, 0x9A, 0xA6);
 
-    private void Select(string exe, GfxApi api, string appId)
+    private void Select(string exe, GfxApi api, string appId, Minecraft.Edition mcForce = Minecraft.Edition.None)
     {
         _exe = exe; _api = api; _appId = appId; _gameDir = Path.GetDirectoryName(exe) ?? "";
+        _manualTarget = "";
         TxtExe.Text = exe;
 
+        var mc = mcForce != Minecraft.Edition.None ? mcForce : Minecraft.Classify(exe);
+        bool isMc = mc != Minecraft.Edition.None;
+
         bool supported = PeAnalyzer.ProxyDllName(api) != null;
-        TxtApiVal.Text = api == GfxApi.Unknown ? "no reconocida"
-                       : supported ? $"{api}  -  soportada"
-                       : $"{api}  -  no soportada todavia";
-        TxtApiVal.Foreground = new SolidColorBrush(supported ? Green : Red);
+        if (isMc)
+        {
+            // Minecraft can't be injected (Java=OpenGL; Bedrock=UWP) -> external tools only.
+            supported = false;
+            TxtApiVal.Text = Minecraft.Friendly(mc);
+            TxtApiVal.Foreground = new SolidColorBrush(Color.FromRgb(0xE0, 0xA5, 0x4F));
+        }
+        else
+        {
+            TxtApiVal.Text = api == GfxApi.Unknown ? "no reconocida"
+                           : supported ? $"{api}  -  soportada"
+                           : $"{api}  -  no soportada todavia";
+            TxtApiVal.Foreground = new SolidColorBrush(supported ? Green : Red);
+        }
 
         var (det, reason) = AntiCheat.Scan(exe, PeAnalyzer.ReadImports(exe).importedDlls);
         _acDetected = det;
@@ -84,16 +114,24 @@ public partial class LauncherWindow : Window
         TxtInstVal.Text = installed ? "instalado en este juego" : "no instalado";
         TxtInstVal.Foreground = new SolidColorBrush(installed ? Green : Gray);
 
+        // we can't inject (unsupported API / Minecraft), but the external tools still work via
+        // the panel's manual target - as long as it isn't an anti-cheat game.
+        bool externalOnly = !supported && !det;
+        if (externalOnly) _manualTarget = exe;
+
         BtnInstall.IsEnabled = supported && !det && !installed;
         BtnUninstall.IsEnabled = installed;
-        BtnLaunch.IsEnabled = true;
+        BtnLaunch.IsEnabled = !isMc;   // launching javaw.exe directly won't start MC; user opens it themselves
 
         if (det)
             SetStatus("No se puede instalar aca",
                 $"Este juego usa anti-cheat ({reason}). Inyectar un DLL puede banear tu cuenta de forma permanente, asi que FrameLCDoctor lo bloquea. Solo single-player sin anti-cheat.");
-        else if (!supported)
-            SetStatus("Juego no soportado todavia",
-                $"La API {api} aun no esta soportada. Por ahora andan los juegos D3D11 y D3D12/DXGI.");
+        else if (externalOnly)
+            SetStatus("Diagnostico en vivo no disponible - pero los tools externos si",
+                (isMc ? "Minecraft no se puede inyectar (Java es OpenGL, Bedrock es UWP), asi que el panel no va a mostrar fps/cuello. "
+                      : $"La API {api} no se puede inyectar todavia, asi que no hay diagnostico en vivo. ")
+                + "PERO podes usar el DRIVER OPTIMIZER, el UPSCALING y el FRAME-GEN sobre este juego: toca 'Abrir panel'. "
+                + (isMc && mc == Minecraft.Edition.Java ? "MC Java suele ser CPU-bound: el frame-gen y el 'threaded optimization' del driver le van muy bien." : ""));
         else if (installed)
             SetStatus("Ya esta instalado",
                 "Arranca el juego (boton Lanzar o por Steam) y abri el panel para ver el diagnostico. Para sacarlo, Desinstalar.");
@@ -123,7 +161,8 @@ public partial class LauncherWindow : Window
             else { _presetPath = null; _preset = null; _presetSource = ""; }
         }
 
-        string engine = _profile?.Engine is { Length: > 0 } e ? e : EngineDetector.Detect(exe);
+        string engine = isMc ? "Minecraft"
+                       : _profile?.Engine is { Length: > 0 } e ? e : EngineDetector.Detect(exe);
         TxtEngineVal.Text = engine.Length > 0 ? engine : "desconocido";
 
         UpdatePresetUi();
@@ -194,7 +233,7 @@ public partial class LauncherWindow : Window
         TxtAcVal.Text = "--";  TxtAcVal.Foreground = new SolidColorBrush(Gray);
         TxtInstVal.Text = "--"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
         SetButtons(false);
-        _profile = null; _preset = null; _presetPath = null;
+        _profile = null; _preset = null; _presetPath = null; _manualTarget = "";
         PresetPanel.Visibility = Visibility.Collapsed;
     }
 
@@ -244,6 +283,9 @@ public partial class LauncherWindow : Window
         // reuse the panel if it's already open, otherwise spawn one (clear the ref when closed).
         if (_panel is { IsLoaded: true }) { _panel.Activate(); return; }
         _panel = new MainWindow();
+        // for games we can't inject (Minecraft / unsupported API), hand the panel a manual
+        // target so the external tools light up without waiting for injection signals.
+        if (_manualTarget.Length > 0) _panel.SetManualTarget(_manualTarget);
         _panel.Closed += (_, _) => _panel = null;
         _panel.Show();
     }

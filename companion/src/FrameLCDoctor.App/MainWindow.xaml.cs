@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 
@@ -10,12 +11,48 @@ public partial class MainWindow : Window
     private readonly CancellationTokenSource _cts = new();
     private GpuVendor _vendor = GpuVendor.Unknown;
 
+    private string _manualExe = "";
+
     public MainWindow()
     {
         InitializeComponent();
         _client.OnSignals += s => Dispatcher.Invoke(() => UpdateUi(s));
-        Loaded += (_, _) => { DetectGpu(); Start(); };
+        Loaded += (_, _) => { DetectGpu(); Start(); if (_manualExe.Length > 0) ApplyManualTarget(); };
         Closed += (_, _) => _cts.Cancel();
+    }
+
+    /// <summary>Point the panel at a game we can't inject (OpenGL/Minecraft/unsupported API):
+    /// live diagnosis stays off, but the external tools (driver optimizer, upscaling, frame-gen,
+    /// priority, affinity) work off the exe name / window. Call before Show().</summary>
+    public void SetManualTarget(string exePath) => _manualExe = exePath;
+
+    private void ApplyManualTarget()
+    {
+        _lastExe = Path.GetFileName(_manualExe);
+        TxtStatus.Text = "modo manual";
+        StatusDot.Fill = new SolidColorBrush(Color.FromRgb(0xE0, 0xA5, 0x4F));
+
+        // tools that only need the exe name or the window
+        BtnPrio.IsEnabled = true;
+        BtnAffinity.IsEnabled = true;
+        BtnUpscale.IsEnabled = true;
+
+        // driver optimizer verdict is vendor-based -> valid without telemetry
+        var drv = DriverOptimizer.Advise(_vendor);
+        TxtDrvVerdict.Text = drv.Verdict; TxtDrv.Text = drv.Reason;
+        var dc = RecColor(drv.Level);
+        TxtDrvVerdict.Foreground = new SolidColorBrush(dc); DrvDot.Background = new SolidColorBrush(dc);
+        bool drvOk = DriverOptimizer.IsSupported(_vendor);
+        BtnDrvApply.IsEnabled = drvOk; BtnDrvRevert.IsEnabled = drvOk;
+
+        // no bottleneck/GPU% telemetry without injection -> can't auto-advise; let the user try.
+        var unk = new SolidColorBrush(RecColor(DxvkRec.Unknown));
+        TxtUpscaleVerdict.Text = "Modo manual"; TxtUpscaleVerdict.Foreground = unk; UpscaleDot.Background = unk;
+        TxtUpscale.Text = "Sin diagnostico no puedo medir si te conviene, pero podes probar: pone el juego en ventana a baja resolucion y activa upscaling. Sirve si estas GPU-bound.";
+        TxtFgVerdict.Text = "Modo manual"; TxtFgVerdict.Foreground = unk; FgDot.Background = unk;
+        TxtFg.Text = "El frame-gen rinde cuando la GPU tiene margen (juegos CPU-bound como Minecraft Java). Probalo con PAGE UP y compara.";
+
+        TxtProfile.Text = $"Objetivo manual: {_lastExe}  ·  diagnostico en vivo no disponible (sin inyeccion). Tools externos OK.";
     }
 
     private void DetectGpu()
