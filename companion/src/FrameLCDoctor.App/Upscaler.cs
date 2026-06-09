@@ -21,7 +21,7 @@ public static class Upscaler
             "Abri un juego con FrameLCDoctor para ver si el upscaling te conviene."),
     };
 
-    public static (bool ok, string msg) Launch(string exeName)
+    public static (bool ok, string msg) Launch(string exeName, bool frameGen = false)
     {
         if (string.IsNullOrWhiteSpace(exeName)) return (false, "No hay un juego conectado.");
         var proc = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exeName))
@@ -32,8 +32,10 @@ public static class Upscaler
         if (!File.Exists(exe)) return (false, "Falta flcd_upscaler.exe en la carpeta de la app.");
         try
         {
-            Process.Start(new ProcessStartInfo(exe, $"--hwnd {(long)proc.MainWindowHandle}") { UseShellExecute = false });
-            return (true, "Upscaling activado. Pone el juego en VENTANA a baja resolucion (ej. 1280x720). En el upscaler: END sale, HOME activa el cursor para menus.");
+            string args = $"--hwnd {(long)proc.MainWindowHandle}" + (frameGen ? " --framegen" : "");
+            Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false });
+            string fg = frameGen ? " PAGE UP activa/desactiva la generacion de frames (2x)." : "";
+            return (true, "Upscaling activado. Pone el juego en VENTANA a baja resolucion (ej. 1280x720). En el upscaler: END sale, HOME activa el cursor para menus." + fg);
         }
         catch (Exception ex) { return (false, "No pude lanzar el upscaler: " + ex.Message); }
     }

@@ -161,7 +161,7 @@ public partial class MainWindow : Window
 
     private void BtnUpscale_Click(object sender, RoutedEventArgs e)
     {
-        var (ok, msg) = Upscaler.Launch(_lastExe);
+        var (ok, msg) = Upscaler.Launch(_lastExe, ChkFrameGen.IsChecked == true);
         TxtUpscale.Text = msg;
     }
 

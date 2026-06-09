@@ -248,6 +248,9 @@
                 </StackPanel>
                 <TextBlock x:Name="TxtUpscale" Text="Abri un juego para ver si el upscaling te conviene."
                            TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,2,0,0"/>
+                <CheckBox x:Name="ChkFrameGen" Content="Generar frames intermedios (2x, experimental)" Margin="0,10,0,0" Foreground="{StaticResource Muted}"/>
+                <TextBlock Text="Inserta frames interpolados entre los reales para mas fluidez. Agrega algo de latencia y puede mostrar artefactos en movimiento rapido. PAGE UP lo activa/desactiva en vivo."
+                           TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource Muted}" Margin="22,2,0,0"/>
                 <Button x:Name="BtnUpscale" Content="Activar upscaling" HorizontalAlignment="Left" Padding="14,6" Margin="0,12,0,0" Click="BtnUpscale_Click" IsEnabled="False"/>
             </StackPanel>
         </Border>
