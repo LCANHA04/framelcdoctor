@@ -27,6 +27,10 @@ fixed_timestep = true          # true if the engine speeds up when uncapped (Nie
                                # -> the app then warns NOT to remove the fps cap
 ```
 
+> **Unreal Engine games don't need a preset** — FrameLCDoctor auto-detects UE4/UE5 and
+> generates one from `GameUserSettings.ini`. A profile is only needed for the engine/
+> timing info or to override the auto preset.
+
 ### A config preset (one-click fps settings)
 
 Point at the game's settings file and list the values to apply. The app shows the user

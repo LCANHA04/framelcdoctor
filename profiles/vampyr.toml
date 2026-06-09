@@ -13,24 +13,9 @@ presents_per_frame = 1
 [timing]
 fixed_timestep = false        # UE4 uses a real (variable) delta; uncapping is safe
 
-[config]
-# UE4 GameUserSettings.ini. The sg.* scalability keys are globally unique in the file,
-# so the flat-ini handler matches them fine.
-base   = "localappdata"
-path   = "AVGame/Saved/Config/WindowsNoEditor/GameUserSettings.ini"
-format = "ini-flat"
-
-[preset.fps]
-# Low-end / max-fps: all quality groups to lowest (Vampyr is CPU/game-thread bound,
-# so the CPU-side ones - view distance, foliage, effects - matter most). Resolution
-# is left untouched (the GPU is idle; lowering it would only blur).
-sg.ViewDistanceQuality = 0
-sg.ShadowQuality       = 0
-sg.AntiAliasingQuality = 0
-sg.PostProcessQuality  = 0
-sg.TextureQuality      = 0
-sg.EffectsQuality      = 0
-sg.FoliageQuality      = 0
+# No hand-authored preset: being Unreal Engine, FrameLCDoctor auto-generates the fps
+# preset (finds GameUserSettings.ini and lowers the sg.* scalability groups). See
+# AutoPresetDetector. Hand-authored [config]/[preset.fps] would override the auto one.
 
 [notes]
 # Single-player, no anti-cheat. Tends to be game-thread (CPU single-core) bound:

@@ -32,8 +32,11 @@ this automates.
 - **System optimizer** (great for low-end): one-click **High Performance** power plan,
   **High priority** for the game process, and a list of **background apps using CPU**
   (so you close the real fps thieves — idle RAM users are ignored).
-- **Per-game presets**: applies an optimal low/fps preset to the game's own config file,
-  showing **exactly what it changes and which file** it touches, with a backup. Reversible.
+- **Per-game presets (auto)**: applies an optimal low/fps preset to the game's own config
+  file — for **Unreal Engine 4/5 games it auto-generates the preset** (finds
+  `GameUserSettings.ini`, lowers the `sg.*` scalability groups), no profile needed; other
+  games use a hand-authored profile. Always shows **exactly what changes and which file**,
+  with a backup. Reversible.
 - **DXVK advisor**: vendor + bottleneck aware — tells you honestly whether DXVK would
   help (big on AMD CPU-bound, rarely on NVIDIA) instead of recommending it blindly.
 - **Frame limiter**: a clean QPC cap you can change live (60 = correct speed on

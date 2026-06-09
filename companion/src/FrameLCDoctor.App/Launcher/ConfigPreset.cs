@@ -78,15 +78,14 @@ public static class ConfigPreset
         return v;
     }
 
-    public static bool IsApplied(GameProfile p)
-    {
-        var path = ResolvePath(p);
-        return path != null && File.Exists(path + BackupSuffix);
-    }
+    // ---- generic (path + preset dict): works for hand-authored profiles AND auto-presets ----
+    public static List<string> DescribeChanges(Dictionary<string, string> preset)
+        => preset.Select(kv => $"{Friendly(kv.Key)} ({kv.Key})  ->  {FriendlyVal(kv.Key, kv.Value)}").ToList();
 
-    public static (bool ok, string msg) Apply(GameProfile p)
+    public static bool IsApplied(string? path) => path != null && File.Exists(path + BackupSuffix);
+
+    public static (bool ok, string msg) Apply(string? path, Dictionary<string, string> preset)
     {
-        var path = ResolvePath(p);
         if (path == null) return (false, "No encontre el archivo de config del juego (¿lo abriste al menos una vez?).");
         try
         {
@@ -94,7 +93,7 @@ public static class ConfigPreset
             if (!File.Exists(bak)) File.Copy(path, bak);   // first apply = backup original
 
             string[] lines = File.ReadAllLines(path);
-            foreach (var kv in p.PresetFps)
+            foreach (var kv in preset)
             {
                 // write "key=value" with no spaces: UE4's ini parser is strict about it,
                 // and flat inis (NieR) read it fine too.
@@ -105,14 +104,13 @@ public static class ConfigPreset
                 if (!found) lines = lines.Append($"{kv.Key}={kv.Value}").ToArray();
             }
             File.WriteAllLines(path, lines);
-            return (true, $"Preset FPS aplicado ({p.PresetFps.Count} ajustes). Backup guardado. Arranca el juego.");
+            return (true, $"Preset FPS aplicado ({preset.Count} ajustes). Backup guardado. Arranca el juego.");
         }
         catch (Exception ex) { return (false, "Error aplicando: " + ex.Message); }
     }
 
-    public static (bool ok, string msg) Restore(GameProfile p)
+    public static (bool ok, string msg) Restore(string? path)
     {
-        var path = ResolvePath(p);
         if (path == null) return (false, "No encontre el archivo de config.");
         string bak = path + BackupSuffix;
         if (!File.Exists(bak)) return (false, "No hay backup (no se aplico preset).");
