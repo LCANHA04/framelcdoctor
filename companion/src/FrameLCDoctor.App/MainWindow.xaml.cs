@@ -63,6 +63,8 @@ public partial class MainWindow : Window
         TxtPlan.Foreground = new SolidColorBrush(isHigh ? Color.FromRgb(0x5C, 0xC8, 0x7A) : Color.FromRgb(0xE0, 0xA5, 0x4F));
         BtnPower.IsEnabled = !isHigh;
         BtnPrio.IsEnabled = _lastExe.Length > 0;
+        TxtCpu.Text = _cpuSummary ??= SystemOptimizer.CpuSummary();
+        BtnAffinity.IsEnabled = _lastExe.Length > 0;
 
         HogsList.Children.Clear();
         var muted = (System.Windows.Media.Brush)FindResource("Muted");
@@ -90,6 +92,14 @@ public partial class MainWindow : Window
     private void BtnPrio_Click(object sender, RoutedEventArgs e)
     {
         var (ok, msg) = SystemOptimizer.BoostGame(_lastExe);
+        TxtOptStatus.Text = msg;
+    }
+
+    private string? _cpuSummary;
+
+    private void BtnAffinity_Click(object sender, RoutedEventArgs e)
+    {
+        var (ok, msg) = SystemOptimizer.PinGameToPerformanceCores(_lastExe);
         TxtOptStatus.Text = msg;
     }
 

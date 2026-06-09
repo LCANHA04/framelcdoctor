@@ -57,7 +57,43 @@ public static class SystemOptimizer
             : (false, "No pude cambiar la prioridad (permisos).");
     }
 
-    // ---- background memory hogs ----
+    // ---- CPU affinity: pin the game to the performance cores ----
+    public static string CpuSummary()
+    {
+        var (_, _, _, total) = CpuTopology.PerformanceCores();
+        if (total == 0) return "CPU: topologia no disponible";
+        var (_, label, applicable) = CpuTopology.BestGameAffinity();
+        return applicable ? $"{total} cores - se puede clavar el juego a {label}"
+                          : $"{total} cores (monolitico: clavar no aplica)";
+    }
+
+    public static (bool ok, string msg) PinGameToPerformanceCores(string exeName)
+    {
+        if (string.IsNullOrWhiteSpace(exeName)) return (false, "No hay un juego conectado.");
+        var (mask, label, applicable) = CpuTopology.BestGameAffinity();
+        if (!applicable)
+            return (false, "Tu CPU es monolitica / no hibrida: no hay cores 'mejores' para clavar. La prioridad alta igual ayuda.");
+        var procs = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exeName));
+        if (procs.Length == 0) return (false, "No encontre el proceso del juego en ejecucion.");
+        int done = 0;
+        foreach (var p in procs) { try { p.ProcessorAffinity = (IntPtr)(long)mask; done++; } catch { } }
+        return done > 0
+            ? (true, $"Juego clavado a {label}. (vuelve a normal al cerrar el juego)")
+            : (false, "No pude fijar la afinidad (permisos).");
+    }
+
+    public static (bool ok, string msg) ResetGameAffinity(string exeName)
+    {
+        var procs = Process.GetProcessesByName(Path.GetFileNameWithoutExtension(exeName));
+        if (procs.Length == 0) return (false, "No encontre el proceso del juego.");
+        int n = Environment.ProcessorCount;
+        ulong all = n >= 64 ? ~0ul : (1ul << n) - 1;
+        int done = 0;
+        foreach (var p in procs) { try { p.ProcessorAffinity = (IntPtr)(long)all; done++; } catch { } }
+        return done > 0 ? (true, "Afinidad restaurada a todos los cores.") : (false, "No pude.");
+    }
+
+    // ---- background cpu hogs ----
     private static readonly HashSet<string> Skip = new(StringComparer.OrdinalIgnoreCase)
     {
         "System","Idle","Registry","Memory Compression","csrss","wininit","services","lsass","winlogon",

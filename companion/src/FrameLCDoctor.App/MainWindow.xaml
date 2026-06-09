@@ -219,6 +219,12 @@
                     <Button x:Name="BtnPrio" Content="Subir a alta" HorizontalAlignment="Right" Padding="12,5" Click="BtnPrio_Click" IsEnabled="False"/>
                 </Grid>
 
+                <Grid Margin="0,0,0,8">
+                    <TextBlock x:Name="TxtCpu" Text="Cores de CPU" Foreground="{StaticResource Muted}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                    <Button x:Name="BtnAffinity" Content="Clavar a P-cores" HorizontalAlignment="Right" Padding="12,5" Click="BtnAffinity_Click" IsEnabled="False"
+                            ToolTip="Fija el juego a los cores de rendimiento (P-cores). Util en CPUs hibridas Intel. Reversible."/>
+                </Grid>
+
                 <TextBlock Text="Apps de fondo usando CPU (te roban fps — cerralas):" Foreground="{StaticResource Muted}" Margin="0,4,0,4"/>
                 <StackPanel x:Name="HogsList"/>
                 <Button x:Name="BtnTaskmgr" Content="Abrir administrador de tareas" HorizontalAlignment="Left" Padding="12,5" Margin="0,8,0,0" Click="BtnTaskmgr_Click"/>
