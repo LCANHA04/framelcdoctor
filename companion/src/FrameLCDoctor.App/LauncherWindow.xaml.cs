@@ -109,15 +109,35 @@ public partial class LauncherWindow : Window
             _preset = hp.PresetFps;
             _presetSource = $"perfil de {hp.Name}";
         }
-        else if (AutoPresetDetector.Detect(exe) is { } auto)
+        else
         {
-            _presetPath = auto.Path;
-            _preset = auto.Preset;
-            _presetSource = $"automatico ({auto.EngineName})";
+            string bn = BottleneckMemory.Get(Path.GetFileName(exe));
+            if (AutoPresetDetector.Detect(exe, bn) is { } auto)
+            {
+                _presetPath = auto.Path;
+                _preset = auto.Preset;
+                _presetSource = bn.Length > 0
+                    ? $"automatico ({auto.EngineName}, segun tu cuello medido: {FriendlyBn(bn)})"
+                    : $"automatico ({auto.EngineName}, max fps -- jugalo una vez con el panel abierto para tailorearlo a tu cuello)";
+            }
+            else { _presetPath = null; _preset = null; _presetSource = ""; }
         }
-        else { _presetPath = null; _preset = null; _presetSource = ""; }
+
+        string engine = _profile?.Engine is { Length: > 0 } e ? e : EngineDetector.Detect(exe);
+        TxtEngineVal.Text = engine.Length > 0 ? engine : "desconocido";
+
         UpdatePresetUi();
     }
+
+    private static string FriendlyBn(string b) => b switch
+    {
+        "cpu-single" => "CPU (1 core)",
+        "cpu-multi"  => "CPU (varios cores)",
+        "gpu"        => "GPU",
+        "cap"        => "tope de fps",
+        "balanced"   => "balanceado",
+        _            => b,
+    };
 
     private void UpdatePresetUi()
     {
@@ -170,6 +190,7 @@ public partial class LauncherWindow : Window
     private void ResetBadges()
     {
         TxtApiVal.Text = "--"; TxtApiVal.Foreground = new SolidColorBrush(Gray);
+        TxtEngineVal.Text = "--";
         TxtAcVal.Text = "--";  TxtAcVal.Foreground = new SolidColorBrush(Gray);
         TxtInstVal.Text = "--"; TxtInstVal.Foreground = new SolidColorBrush(Gray);
         SetButtons(false);

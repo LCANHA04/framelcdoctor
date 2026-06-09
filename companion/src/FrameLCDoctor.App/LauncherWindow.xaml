@@ -74,6 +74,10 @@
                         <TextBlock x:Name="TxtApiVal" Text="--" FontWeight="SemiBold"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Style="{StaticResource Lbl}" Text="Motor"/>
+                        <TextBlock x:Name="TxtEngineVal" Text="--" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                         <TextBlock Style="{StaticResource Lbl}" Text="Anti-cheat"/>
                         <TextBlock x:Name="TxtAcVal" Text="--" FontWeight="SemiBold"/>
                     </StackPanel>

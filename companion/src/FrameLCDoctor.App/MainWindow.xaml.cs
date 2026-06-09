@@ -44,6 +44,7 @@ public partial class MainWindow : Window
                 bool hp = SystemOptimizer.IsHighName(plan);
                 var hogs = SystemOptimizer.TopCpuHogs(_lastExe);
                 Dispatcher.Invoke(() => UpdateOptimizer(plan, hp, hogs));
+                BottleneckMemory.Record(_lastExe, _lastBottleneck);   // remember for tailored presets
             }
             tick++;
             try { await Task.Delay(1000, ct); } catch { break; }
@@ -134,10 +135,12 @@ public partial class MainWindow : Window
         TxtDxvkVerdict.Foreground = new SolidColorBrush(c);
         DxvkDot.Background = new SolidColorBrush(c);
 
+        _lastBottleneck = s.Bottleneck;
         UpdateSettings(s.Bottleneck);
     }
 
     private string _lastExe = "";
+    private string _lastBottleneck = "";
     private bool _fixedTimestep;
 
     private void LoadProfile(string exe)
