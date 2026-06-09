@@ -42,6 +42,19 @@ this automates.
 - **Frame limiter**: a clean QPC cap you can change live (60 = correct speed on
   fixed-timestep engines).
 
+**Beyond the game** (what you *can't* toggle from in-game — the real differentiator)
+- **CPU affinity**: pins the game to the performance cores (Intel P-cores / a single Ryzen
+  CCD), off the cores running background junk. Helps CPU-bound games. Reversible.
+- **Upscaling** (external, Magpie/Lossless-Scaling style): run the game windowed at a low
+  resolution and `flcd_upscaler.exe` captures + upscales it to fullscreen — the GPU draws
+  fewer pixels = more fps. Recommended **only when GPU-bound** (the diagnosis decides).
+- **Frame generation**: motion-compensated interpolation (block-matching optical flow in a
+  compute shader) inserts a frame between real ones for smoother motion. Recommended **only
+  when the GPU has headroom** (the inverse of upscaling). Toggle with PAGE UP.
+- **Driver optimizer**: a per-game NVIDIA profile (NvAPI: prefer-max-performance, low
+  latency, OpenGL threaded optimization, driver fps cap) or AMD global settings (ADLX:
+  Anti-Lag, frame-rate target). Forces what the game doesn't expose. Reversible.
+
 **In-game overlay**
 - Toggle an ImGui HUD (Insert) showing fps / frametime / lows / GPU-CPU / bottleneck,
   rendered into the game's swap chain. Hidden by default.
@@ -49,14 +62,20 @@ this automates.
 **Launcher**
 - Pick a Steam game (or browse to an exe), see its graphics API + **anti-cheat status**,
   install/uninstall, and launch. **Anti-cheat games are hard-blocked** (ban protection).
+- **Minecraft**: auto-detected when running (it isn't on Steam). Java Edition is OpenGL —
+  the launcher injects the core (no file drop) and hooks `gdi32!SwapBuffers`, so you get
+  live fps/bottleneck in MC too. The external tools (driver optimizer, frame-gen) also apply.
 
 ---
 
 ## Architecture
 
-- **Core** (C++ injected DLL): a proxy DLL (d3d11/dxgi) that hooks the swap chain Present,
-  profiles frames, runs the headroom classifier, paces the limiter, and draws the overlay.
-  Streams data to the companion over a named pipe.
+- **Core** (C++ injected DLL): hooks the present (D3D11/DXGI swap chain, or `gdi32!SwapBuffers`
+  for OpenGL via MinHook), profiles frames, runs the headroom classifier, paces the limiter,
+  and draws the overlay. Streams data to the companion over a named pipe. Loaded as a
+  beside-the-exe proxy (D3D) or by `flcd_inject.exe` (CreateRemoteThread, for OpenGL / no
+  file drop). Standalone helper exes: `flcd_upscaler` (upscale + frame-gen), `flcd_nvdrs` /
+  `flcd_amddrs` (driver optimizer), `flcd_inject` (injector).
 - **Companion** (C#/.NET WPF): the GUI, OS metrics (PDH GPU%/CPU%), launcher, profiles,
   and the system optimizer / presets.
 - **Profiles** (TOML): per-game knowledge, community-contributable.
@@ -106,9 +125,12 @@ engine, the presents-per-frame, a fixed-timestep flag, and a config preset. See
 
 ## Roadmap
 
+- Validate on real hardware: frame-gen (visual quality), AMD driver optimizer (RX 6600 + ADLX
+  SDK), OpenGL diagnosis (Minecraft Java injection)
+- FSR upscaling shader (sharper than the current bilinear), per-app AMD profiles
 - DXVK one-click auto-install (needs co-existence with our proxy → winmm vehicle)
 - VSync / SyncInterval override remedy
-- D3D9 / OpenGL / Vulkan support (currently D3D11 + D3D12/DXGI)
+- D3D9 / Vulkan support (currently D3D11 + D3D12/DXGI + OpenGL)
 - More game profiles & presets (community)
 - Code signing (reduce AV false positives)
 

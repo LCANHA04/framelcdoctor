@@ -228,13 +228,30 @@ framelcdoctor/
 - **Overlay in-game ImGui** (display-only, toggle Insert).
 - GUI WPF (Segoe UI Variable), companion C#/.NET 8.
 
+**Hecho — "más allá del juego"** (lo que no se toca desde el juego; el diferenciador real):
+- **Afinidad de CPU**: clava el juego a P-cores (Intel) o un CCD (Ryzen). Reversible.
+- **Upscaling propio** (`flcd_upscaler.exe`): captura la ventana (Windows.Graphics.Capture)
+  y la escala a fullscreen con D3D11. Recomendado solo si GPU-bound. Validado en NieR.
+- **Generación de frames**: interpolación con compensación de movimiento (optical flow
+  block-matching en compute shader) en el mismo exe. Recomendado solo con margen de GPU.
+  *Falta validación visual.*
+- **Optimizador de driver**: NVIDIA (`flcd_nvdrs.exe`, NvAPI — perfil por juego: max perf,
+  baja latencia, threaded optimization OpenGL, cap de fps; **validado en vivo**) y AMD
+  (`flcd_amddrs.exe`, ADLX — Anti-Lag + FRTC, global; *falta build+validar en RX 6600*).
+- **Diagnóstico en OpenGL** (P5): el core inyectable (`flcd_inject.exe` por CreateRemoteThread)
+  inline-hookea `gdi32!SwapBuffers` con MinHook → fps/cuello en juegos OpenGL. **Minecraft
+  Java** autodetectado e inyectable desde el launcher. *Falta validación en MC real.*
+
 **Decisiones que cambiaron vs el diseño original:**
 - UI = **WPF** (no Avalonia): viene con el SDK, sin NuGet, y el tool es Windows-only.
 - ppf no se hardcodea: se **auto-detecta** por gap entre presents.
+- OpenGL no va por proxy (gdi32 es KnownDLL): va por **inyección + inline-hook** (MinHook).
 
 **TODO (diferido, necesita testear lanzando juegos o requiere insumos externos):**
+- Validación en hardware: frame-gen (calidad visual), AMD/ADLX (RX 6600), OpenGL/MC (inyección).
+- Shader **FSR** para el upscaler (hoy bilineal); perfiles **por-app** en AMD.
 - DXVK auto-install de un click (convivencia con el proxy d3d11 → mover el vehículo a winmm).
 - Remedio **sync-override** (forzar/quitar vsync; ojo flip-model sin allow-tearing).
-- Soporte **D3D9 / OpenGL / Vulkan** (hoy D3D11 + D3D12/DXGI). D3D9 = proxy d3d9 + hook
+- Soporte **D3D9 / Vulkan** (hoy D3D11 + D3D12/DXGI + OpenGL). D3D9 = proxy d3d9 + hook
   EndScene/Present + imgui_impl_dx9. Vulkan = layer + vkQueuePresentKHR + imgui_impl_vulkan.
 - **Firma de código** (requiere certificado).
