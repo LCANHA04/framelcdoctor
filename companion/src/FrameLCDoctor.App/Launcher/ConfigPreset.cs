@@ -56,6 +56,15 @@ public static class ConfigPreset
         "isDynamicResolutionEnable"=> "Resolucion dinamica",
         "textureFilter"            => "Filtro de texturas",
         "lodType"                  => "Nivel de detalle (LOD)",
+        // Unreal Engine scalability groups
+        "sg.ViewDistanceQuality"   => "Distancia de dibujado",
+        "sg.ShadowQuality"         => "Sombras",
+        "sg.AntiAliasingQuality"   => "Antialiasing (AA)",
+        "sg.PostProcessQuality"    => "Post-procesado",
+        "sg.TextureQuality"        => "Texturas",
+        "sg.EffectsQuality"        => "Efectos",
+        "sg.FoliageQuality"        => "Vegetacion / follaje",
+        "sg.ResolutionQuality"     => "Escala de resolucion",
         _                          => key,
     };
 
@@ -63,6 +72,8 @@ public static class ConfigPreset
     {
         if (key.StartsWith("is", StringComparison.OrdinalIgnoreCase) && key.Contains("Enable"))
             return v.Trim() == "0" ? "desactivado" : "activado";
+        if (key.StartsWith("sg.", StringComparison.OrdinalIgnoreCase))
+            return v.Trim() == "0" ? "minimo (0)" : v;
         if (key == "shadowQuality" && v.Trim() == "0") return "0 (minimo)";
         return v;
     }
@@ -85,11 +96,13 @@ public static class ConfigPreset
             string[] lines = File.ReadAllLines(path);
             foreach (var kv in p.PresetFps)
             {
+                // write "key=value" with no spaces: UE4's ini parser is strict about it,
+                // and flat inis (NieR) read it fine too.
                 var rx = new Regex($@"^\s*{Regex.Escape(kv.Key)}\s*=.*$", RegexOptions.IgnoreCase);
                 bool found = false;
                 for (int i = 0; i < lines.Length; i++)
-                    if (rx.IsMatch(lines[i])) { lines[i] = $"{kv.Key} = {kv.Value}"; found = true; break; }
-                if (!found) lines = lines.Append($"{kv.Key} = {kv.Value}").ToArray();
+                    if (rx.IsMatch(lines[i])) { lines[i] = $"{kv.Key}={kv.Value}"; found = true; break; }
+                if (!found) lines = lines.Append($"{kv.Key}={kv.Value}").ToArray();
             }
             File.WriteAllLines(path, lines);
             return (true, $"Preset FPS aplicado ({p.PresetFps.Count} ajustes). Backup guardado. Arranca el juego.");
