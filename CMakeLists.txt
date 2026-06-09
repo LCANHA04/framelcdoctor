@@ -16,3 +16,6 @@ add_subdirectory(upscaler)
 
 # Driver optimizer: standalone NVIDIA driver-profile tool (nvapi).
 add_subdirectory(nvdrs)
+
+# Driver optimizer (AMD): ADLX tool, built only if the ADLX SDK is present.
+add_subdirectory(amddrs)
