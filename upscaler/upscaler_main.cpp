@@ -13,6 +13,7 @@
 #include <dxgi1_2.h>
 #include <d3dcompiler.h>
 #include <string>
+#include <mutex>
 
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Graphics.Capture.h>
@@ -35,6 +36,11 @@ using winrt::com_ptr;
 static HWND  g_target = nullptr;
 static HWND  g_wnd = nullptr;
 static bool  g_running = true;
+
+// The frame pool is free-threaded: OnFrame fires on a pool thread while the main loop
+// renders. ID3D11DeviceContext (immediate) is NOT thread-safe, and g_shaderTex/g_srv are
+// swapped by OnFrame while RenderFrame reads them -> guard both with one lock.
+static std::mutex g_ctxMtx;
 
 // cursor forwarding (toggle with HOME): map a virtual cursor over the upscaled view to
 // the real pixel in the small game window, so menu clicks land right.
@@ -103,6 +109,7 @@ static void OnFrame(wgc::Direct3D11CaptureFramePool const& pool, winrt::Windows:
     if (!src) return;
 
     D3D11_TEXTURE2D_DESC sd; src->GetDesc(&sd);
+    std::lock_guard<std::mutex> lk(g_ctxMtx);
     if (!g_shaderTex || sd.Width != g_texW || sd.Height != g_texH) {
         g_texW = sd.Width; g_texH = sd.Height;
         D3D11_TEXTURE2D_DESC td = {};
@@ -118,6 +125,7 @@ static void OnFrame(wgc::Direct3D11CaptureFramePool const& pool, winrt::Windows:
 
 static void RenderFrame()
 {
+    std::lock_guard<std::mutex> lk(g_ctxMtx);
     if (!g_srv) return;
     RECT rc; GetClientRect(g_wnd, &rc);
     D3D11_VIEWPORT vp = {}; vp.Width = (float)(rc.right - rc.left); vp.Height = (float)(rc.bottom - rc.top); vp.MaxDepth = 1;
