@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch native deps (ImGui)
+        shell: pwsh
+        run: ./tools/fetch_deps.ps1
+
+      - name: Configure & build core (CMake)
+        shell: pwsh
+        run: |
+          cmake -B build -S . -A x64
+          cmake --build build --config Release
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build companion (.NET)
+        shell: pwsh
+        run: dotnet build companion/FrameLCDoctor.sln -c Release

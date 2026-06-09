@@ -1,5 +1,8 @@
 # FrameLCDoctor
 
+[![build](https://github.com/LCANHA04/framelcdoctor/actions/workflows/build.yml/badge.svg)](https://github.com/LCANHA04/framelcdoctor/actions/workflows/build.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **A diagnosis-driven game performance tool — a "deeper Special K", focused on actually
 gaining FPS, especially on low-end PCs.**
 
