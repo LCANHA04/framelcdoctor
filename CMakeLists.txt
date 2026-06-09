@@ -10,3 +10,6 @@ endif()
 
 # Core: the injected DLL. Companion (C#/.NET) builds separately via dotnet.
 add_subdirectory(core)
+
+# Upscaler: standalone external window upscaler exe.
+add_subdirectory(upscaler)
