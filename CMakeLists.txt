@@ -13,3 +13,6 @@ add_subdirectory(core)
 
 # Upscaler: standalone external window upscaler exe.
 add_subdirectory(upscaler)
+
+# Driver optimizer: standalone NVIDIA driver-profile tool (nvapi).
+add_subdirectory(nvdrs)
