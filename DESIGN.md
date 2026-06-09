@@ -211,3 +211,30 @@ framelcdoctor/
   alinea con el espíritu del proyecto; WPF es solo-Windows pero más maduro). Decidir en P0.
 - **Core↔companion:** named pipe con un protocolo chico JSON/binario; el companion no
   inyecta lógica, orquesta y muestra.
+
+## 10. Estado de implementación (actualizado)
+
+**Hecho y validado** (NieR + Vampyr):
+- Inyección por proxy DLL (d3d11/dxgi), hook de present sin dummy device, IPC named pipe.
+- Profiler: frametime, fps, **auto-ppf** (detección de frame por gap entre presents),
+  **1% / 0.1% low**, serie de frametime.
+- Headroom Index + clasificador de cuello (GPU / CPU-single / CPU-multi / cap / balanced).
+- Remedios: **frame limiter** en caliente, **DXVK advisor** (vendor+cuello, plain-language).
+- **"Cómo ganar fps"** (settings por cuello, consciente de fixed-timestep).
+- **Optimizador del sistema**: plan de energía, prioridad del juego, apps de fondo por CPU.
+- **Presets por juego** (config del juego, con backup + transparencia total).
+- **Perfiles TOML** por exe (NieR, Vampyr).
+- **Launcher** con scan de Steam + browse, detección de API, **guard anti-cheat**, instalar/lanzar.
+- **Overlay in-game ImGui** (display-only, toggle Insert).
+- GUI WPF (Segoe UI Variable), companion C#/.NET 8.
+
+**Decisiones que cambiaron vs el diseño original:**
+- UI = **WPF** (no Avalonia): viene con el SDK, sin NuGet, y el tool es Windows-only.
+- ppf no se hardcodea: se **auto-detecta** por gap entre presents.
+
+**TODO (diferido, necesita testear lanzando juegos o requiere insumos externos):**
+- DXVK auto-install de un click (convivencia con el proxy d3d11 → mover el vehículo a winmm).
+- Remedio **sync-override** (forzar/quitar vsync; ojo flip-model sin allow-tearing).
+- Soporte **D3D9 / OpenGL / Vulkan** (hoy D3D11 + D3D12/DXGI). D3D9 = proxy d3d9 + hook
+  EndScene/Present + imgui_impl_dx9. Vulkan = layer + vkQueuePresentKHR + imgui_impl_vulkan.
+- **Firma de código** (requiere certificado).
