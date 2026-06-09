@@ -34,9 +34,14 @@ foreach ($h in "upscaler", "nvdrs", "amddrs") {
 }
 
 # injector + injectable core (OpenGL/Minecraft diagnosis): ships both the exe and the dll.
+# flcd_core.dll may be locked if it's currently injected into a running game - that's fine,
+# the existing copy is identical; warn instead of failing the whole publish.
 if (Test-Path "$app\inject\flcd_inject.exe") {
     New-Item -ItemType Directory -Force "$Out\inject" | Out-Null
-    Copy-Item "$app\inject\flcd_inject.exe", "$app\inject\flcd_core.dll" "$Out\inject\" -Force
+    foreach ($f in "flcd_inject.exe", "flcd_core.dll") {
+        try { Copy-Item "$app\inject\$f" "$Out\inject\$f" -Force -ErrorAction Stop }
+        catch { Write-Host "warn: no pude copiar $f (en uso? inyectado en un juego abierto). Se deja la copia existente." }
+    }
 } else {
     Write-Host "warn: no inject\flcd_inject.exe (build core + injector with CMake to ship OpenGL diagnosis)"
 }
