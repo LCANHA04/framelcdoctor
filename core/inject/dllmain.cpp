@@ -54,7 +54,12 @@ DWORD WINAPI BootThread(LPVOID)
 
     flcd::hooks::SetOnPresent(&OnPresent);
     if (!flcd::hooks::InstallD3D11PresentHook())
-        flcd::Log("WARN: present hook not installed (non-D3D11 target?)");
+        flcd::Log("WARN: D3D11 present hook not installed (non-D3D11 target?)");
+#ifdef FLCD_HAS_GL
+    // injected build also catches OpenGL (gdi32!SwapBuffers). Harmless on D3D games.
+    if (!flcd::hooks::InstallOpenGLPresentHook())
+        flcd::Log("WARN: OpenGL present hook not installed");
+#endif
 
     flcd::ipc::StartServer();
     flcd::Log("=== core ready: hook + profiler + ipc up ===");

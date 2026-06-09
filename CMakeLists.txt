@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(FrameLCDoctor LANGUAGES CXX)
+project(FrameLCDoctor LANGUAGES CXX C)   # C for MinHook (third_party/minhook/src/*.c)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -19,3 +19,6 @@ add_subdirectory(nvdrs)
 
 # Driver optimizer (AMD): ADLX tool, built only if the ADLX SDK is present.
 add_subdirectory(amddrs)
+
+# Injector: loads the core into a running game (OpenGL / no-file-drop targets).
+add_subdirectory(injector)

@@ -16,4 +16,13 @@ void SetOnPresent(OnPresentFn fn);
 // Present(#8)/Present1(#22). Returns false if DXGI/factory could not be set up.
 bool InstallD3D11PresentHook();
 
+// Fire the per-present orchestrator from a non-DXGI present source (OpenGL), with the
+// same re-entrancy guard so a wglSwapBuffers -> gdi32 SwapBuffers nest counts once.
+void FirePresentExternal();
+
+// Inline-hook gdi32!SwapBuffers (MinHook). This is the present point for OpenGL on Windows:
+// modern GLFW apps (Minecraft 1.13+) call it directly, and legacy wglSwapBuffers funnels
+// into it too - so one hook catches both. Only meaningful in the injected build (FLCD_HAS_GL).
+bool InstallOpenGLPresentHook();
+
 } // namespace flcd::hooks

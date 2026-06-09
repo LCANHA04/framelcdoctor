@@ -96,6 +96,16 @@ HRESULT STDMETHODCALLTYPE hkCreateSwapChainForHwnd(IDXGIFactory2* self, IUnknown
 
 void SetOnPresent(OnPresentFn fn) { g_onPresent = fn; }
 
+// Shared per-present fire for non-DXGI present sources (OpenGL). Reuses the same guard so a
+// nested wglSwapBuffers -> gdi32 SwapBuffers (or any re-entry) is counted exactly once.
+void FirePresentExternal()
+{
+    if (InterlockedCompareExchange(&g_inPresent, 1, 0) == 0) {
+        if (g_onPresent) g_onPresent();
+        InterlockedExchange(&g_inPresent, 0);
+    }
+}
+
 bool InstallD3D11PresentHook()
 {
     HMODULE dxgi = LoadLibraryW(L"dxgi.dll");
