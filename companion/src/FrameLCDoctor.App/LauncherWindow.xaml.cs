@@ -23,13 +23,28 @@ public partial class LauncherWindow : Window
 
     private void LoadGames()
     {
-        TxtStatus.Text = "buscando juegos de Steam...";
-        Task.Run(() => SteamLibrary.InstalledGames()).ContinueWith(t =>
+        TxtStatus.Text = "buscando juegos...";
+        Task.Run(() =>
+        {
+            var games = SteamLibrary.InstalledGames();
+            // auto-detect a running Minecraft (it isn't on Steam) and put it on top.
+            var (ed, exe) = Minecraft.FindRunning();
+            if (ed != Minecraft.Edition.None)
+                games.Insert(0, new SteamGame
+                {
+                    Name = Minecraft.Friendly(ed) + "  ·  en ejecucion",
+                    IsMinecraft = true, McEdition = ed, ExePath = exe,
+                });
+            return games;
+        }).ContinueWith(t =>
         {
             ListGames.ItemsSource = t.Result;
-            TxtStatus.Text = t.Result.Count > 0
-                ? $"{t.Result.Count} juegos. Elegi uno (o Examinar)."
-                : "no encontre juegos de Steam. Usa Examinar.";
+            bool mc = t.Result.Count > 0 && t.Result[0].IsMinecraft;
+            TxtStatus.Text = mc
+                ? "Minecraft detectado arriba. Elegilo y toca 'Abrir panel'."
+                : t.Result.Count > 0
+                    ? $"{t.Result.Count} juegos. Elegi uno (o Examinar). Si abris Minecraft, toca Refrescar."
+                    : "no encontre juegos. Abri Minecraft y toca Refrescar, o usa Examinar.";
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
 
@@ -38,6 +53,12 @@ public partial class LauncherWindow : Window
     private void ListGames_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (ListGames.SelectedItem is not SteamGame g) return;
+        if (g.IsMinecraft)   // injected non-Steam entry -> external-tools path
+        {
+            TxtName.Text = Minecraft.Friendly(g.McEdition);
+            Select(g.ExePath, g.McEdition == Minecraft.Edition.Bedrock ? GfxApi.D3D11 : GfxApi.OpenGl, "", g.McEdition);
+            return;
+        }
         TxtName.Text = g.Name;
         TxtExe.Text = "buscando el exe de render...";
         SetButtons(false);

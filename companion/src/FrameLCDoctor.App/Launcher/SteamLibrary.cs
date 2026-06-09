@@ -9,6 +9,11 @@ public sealed class SteamGame
     public string AppId { get; set; } = "";
     public string Name { get; set; } = "";
     public string InstallDir { get; set; } = "";   // full path (WPF binds to properties, not fields)
+
+    // non-Steam entries we inject (e.g. a running Minecraft): route to the external-tools path.
+    public bool IsMinecraft { get; set; }
+    public Minecraft.Edition McEdition { get; set; }
+    public string ExePath { get; set; } = "";
 }
 
 /// <summary>Enumerates installed Steam games (libraryfolders.vdf + appmanifests).</summary>
